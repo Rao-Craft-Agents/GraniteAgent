@@ -45,7 +45,7 @@ final class ProjectTests: XCTestCase {
         XCTAssertTrue(project.text.contains("objectVersion = 77;"))
         let synchronized = project.objects("PBXFileSystemSynchronizedRootGroup").compactMap { $0.string("path") }
         XCTAssertEqual(Set(synchronized), ["Shared", "Components", "Services", "iOS", "macOS", "Tests", "UITests"])
-        XCTAssertEqual(project.targets.map(\.name), ["Recipes-iOS", "Recipes-macOS", "RecipesTests-iOS", "RecipesTests-macOS", "RecipesUITests-iOS", "RecipesUITests-macOS"])
+        XCTAssertEqual(project.targets.map(\.name), ["Recipes-macOS", "Recipes-iOS", "RecipesTests-iOS", "RecipesTests-macOS", "RecipesUITests-iOS", "RecipesUITests-macOS"])
         let byName = Dictionary(uniqueKeysWithValues: project.targets.map { ($0.name, $0) })
         XCTAssertEqual(project.synchronizedFolders(of: byName["Recipes-iOS"]!), ["Shared", "Components", "Services", "iOS"])
         XCTAssertEqual(project.synchronizedFolders(of: byName["Recipes-macOS"]!), ["Shared", "Components", "Services", "macOS"])
@@ -150,5 +150,24 @@ final class ProjectTests: XCTestCase {
         let app = project.applicationTargets[0]
         XCTAssertEqual(project.settings(of: app)?["DEVELOPMENT_ASSET_PATHS"]?.string, "\"Greeter/Preview Content\"", "escaped quotes read back")
         XCTAssertEqual(project.moduleName(of: app), "Greeter", "$(TARGET_NAME) is the target's name")
+    }
+
+    /// With no team the Mac app is signed to run locally and listed first, so it builds with no team and a build that
+    /// names no scheme builds it; with a team, signing is the team's.
+    func testWithNoTeamTheMacAppSignsLocallyAndComesFirst() async throws {
+        let folder = try Fixture.folder()
+        try await Fixture.call(Fixture.project, in: folder)
+        let project = try String(contentsOf: folder.appendingPathComponent("Recipes.xcodeproj/project.pbxproj"), encoding: .utf8)
+        XCTAssertEqual(project.components(separatedBy: "CODE_SIGN_IDENTITY = \"-\";").count - 1, 2, "the Mac app's Debug and Release")
+        let targets = try XCTUnwrap(project.range(of: "targets = (\n"))
+        XCTAssertTrue(project[targets.upperBound...].hasPrefix("\t\t\t\t") && project[targets.upperBound...].prefix(80).contains("Recipes-macOS"), "the Mac app is first")
+
+        let teamed = try Fixture.folder()
+        var input = Fixture.project
+        input.team = "ABCDE12345"
+        try await Fixture.call(input, in: teamed)
+        let signed = try String(contentsOf: teamed.appendingPathComponent("Recipes.xcodeproj/project.pbxproj"), encoding: .utf8)
+        XCTAssertFalse(signed.contains("CODE_SIGN_IDENTITY = \"-\";"))
+        XCTAssertTrue(signed.contains("DEVELOPMENT_TEAM = \"ABCDE12345\";"))
     }
 }

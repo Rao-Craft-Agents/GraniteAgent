@@ -93,6 +93,22 @@ Everything is made from the lines. The host's model is asked only for what is th
 `swiftc -parse` in its file, and asked again with what was wrong; its examples come from another app. Every file is
 staged and parsed, and the project file read by `plutil`, before any lands.
 
+## In Craft
+
+An app that uses Swift packages, as every Granite app does, builds only by a scheme: `xcodebuild` with no scheme
+cannot resolve a package product. Craft's checks build an Xcode project with `xcodebuild build` unless the project
+says otherwise, so give Craft the project's own command in its settings for the project (or for one run with
+`CRAFT_CONFIG_OVERLAY`):
+
+```json
+{"build": {"command": "xcodebuild -scheme Hearth-macOS -destination platform=macOS build",
+           "testCommand": "xcodebuild -scheme Hearth-macOS -destination platform=macOS test"}}
+```
+
+With no `team`, the Mac app is signed to run locally (ad hoc) and is the project's first target, so it builds and
+runs on this Mac before a team is chosen. The UI tests are in the schemes but skipped until turned on, since they
+need an interactive session to drive the app.
+
 ## Testing
 
 ```

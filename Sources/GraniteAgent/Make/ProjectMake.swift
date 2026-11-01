@@ -72,6 +72,7 @@ struct ProjectMake {
 
         plan.types = [AppTemplates.appType(name), root, "AppRoot", "EnvironmentService", "ConfigService"]
         plan.notes.append("\(name)-iOS and \(name)-macOS build the app and run its tests; Granite is pinned at \(GranitePin.revision.prefix(8)) and linked with GraniteAgents")
+        plan.notes.append("an app that uses Swift packages builds only by a scheme: give Craft this project's build command, `xcodebuild -scheme \(name)-macOS -destination platform=macOS build` (and `test` for its tests)")
         plan.notes.append("a file written under Shared, Components, Services, iOS, macOS, Tests or UITests joins its targets with no project edit")
         if !packages.isEmpty { plan.notes.append("linked \(packages.flatMap(\.products).joined(separator: ", ")) into both apps") }
         plan.notes.append("next: the app's services (`make: service`), its pages (`make: component`), then `make: navigation` and `make: modals`")

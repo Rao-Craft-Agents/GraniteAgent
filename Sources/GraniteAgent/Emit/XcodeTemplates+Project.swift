@@ -359,8 +359,8 @@ extension XcodeTemplates {
         \t\t\tprojectDirPath = "";
         \t\t\tprojectRoot = "";
         \t\t\ttargets = (
-        \t\t\t\t@@APP_IOS@@ /* @@NAME@@-iOS */,
         \t\t\t\t@@APP_MAC@@ /* @@NAME@@-macOS */,
+        \t\t\t\t@@APP_IOS@@ /* @@NAME@@-iOS */,
         \t\t\t\t@@TESTS_IOS@@ /* @@NAME@@Tests-iOS */,
         \t\t\t\t@@TESTS_MAC@@ /* @@NAME@@Tests-macOS */,
         \t\t\t\t@@UITESTS_IOS@@ /* @@NAME@@UITests-iOS */,
@@ -671,6 +671,7 @@ extension XcodeTemplates {
         \t\t\tbuildSettings = {
         \t\t\t\tASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
         \t\t\t\tASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+        @@MAC_SIGN@@
         \t\t\t\tCODE_SIGN_STYLE = Automatic;
         \t\t\t\tCOMBINE_HIDPI_IMAGES = YES;
         \t\t\t\tCURRENT_PROJECT_VERSION = 1;
@@ -702,6 +703,7 @@ extension XcodeTemplates {
         \t\t\tbuildSettings = {
         \t\t\t\tASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
         \t\t\t\tASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+        @@MAC_SIGN@@
         \t\t\t\tCODE_SIGN_STYLE = Automatic;
         \t\t\t\tCOMBINE_HIDPI_IMAGES = YES;
         \t\t\t\tCURRENT_PROJECT_VERSION = 1;

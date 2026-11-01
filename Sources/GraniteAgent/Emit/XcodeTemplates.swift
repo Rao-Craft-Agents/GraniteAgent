@@ -33,6 +33,10 @@ enum XcodeTemplates {
             .replacingOccurrences(of: "@@TESTS_BUNDLE@@", with: q(bundleId + ".tests"))
             .replacingOccurrences(of: "@@UITESTS_BUNDLE@@", with: q(bundleId + ".uitests"))
             .replacingOccurrences(of: "@@TEAM@@", with: "\"\(team)\"")
+            // PIN: NO TEAM, SIGNED TO RUN LOCALLY. A Mac app with no team builds and runs on this Mac only when it is
+            // signed ad hoc; automatic signing with no team refuses. The Mac app is also the project's first target,
+            // so a build that names no scheme builds the app that needs no team.
+            .replacingOccurrences(of: "@@MAC_SIGN@@\n", with: team.isEmpty ? "\t\t\t\tCODE_SIGN_IDENTITY = \"-\";\n" : "")
             .replacingOccurrences(of: "@@DISPLAY@@", with: "\"\(name)\"")
     }
 
