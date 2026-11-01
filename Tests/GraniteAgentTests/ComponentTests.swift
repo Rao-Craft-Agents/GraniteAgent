@@ -1,0 +1,179 @@
+import Foundation
+import XCTest
+@testable import GraniteAgent
+
+/// `make: component`: a page in the component shape, laid out from what it shows and does, bound to its services'
+/// real fields, with its subviews from the model when a line describes them and from their values' fields otherwise.
+final class ComponentTests: XCTestCase {
+    /// A recipe app with its model type and its recipes service.
+    private func app() async throws -> URL {
+        let folder = try Fixture.folder()
+        try await Fixture.call(Fixture.project, in: folder)
+        try FileManager.default.createDirectory(at: folder.appendingPathComponent("Shared/Models"), withIntermediateDirectories: true)
+        try Fixture.recipe.write(to: folder.appendingPathComponent("Shared/Models/Recipe.swift"), atomically: true, encoding: .utf8)
+        try await Fixture.call(Fixture.recipesService, in: folder)
+        return folder
+    }
+
+    private func read(_ folder: URL, _ path: String) throws -> String {
+        try String(contentsOf: folder.appendingPathComponent(path), encoding: .utf8)
+    }
+
+    func testAListPageIsTheComponentShapeWithEveryStateDrawn() async throws {
+        let folder = try await app()
+        let result = try await Fixture.call(Fixture.recipeList, in: folder)
+        XCTAssertEqual(Set(result.paths.map { URL(fileURLWithPath: $0).lastPathComponent }),
+                       ["RecipeList.swift", "RecipeList+Center.swift", "RecipeList+View.swift", "RecipeList+Actions.swift", "RecipeList.RowView.swift", "RelayClock.swift"])
+        let component = try read(folder, "Components/RecipeList/RecipeList.swift")
+        XCTAssertTrue(component.contains("struct RecipeList: GraniteComponent {\n    @Command var center: Center\n\n    @Relay var recipes: RecipesService"))
+        XCTAssertTrue(component.contains("RelayClock([RelayClock.on(RecipesService.self)])"), "its selection is bound to the service")
+        let view = try read(folder, "Components/RecipeList/RecipeList+View.swift")
+        for piece in ["extension RecipeList: View {", "ForEach(recipes.state.recipes) { recipe in", "RecipeListRowView(recipe: recipe)",
+                      ".onTapGesture { recipes.set(.favorite(recipe.id)) }", ".accessibilityAddTraits(.isButton)", "Button(\"Favorite\", systemImage: \"star\") { Task { try? await favor(recipe: recipe) } }",
+                      ".swipeActions {", "if recipe.id == recipes.state.recipes.last?.id, recipes.state.loading == nil { Task { try? await more() } }", ".refreshable { try? await refresh() }",
+                      ".keyboardShortcut(\"r\")", ".task(id: isReady) {", "guard isReady, recipes.state.recipes.isEmpty else { return }",
+                      "ContentUnavailableView(\"No recipes yet\", systemImage: \"tray\")", "if recipes.state.loading != nil {",
+                      "if let message = recipes.state.lastError {", "Button(\"Try Again\")", ".navigationTitle(\"Recipes\")",
+                      "private var isReady: Bool { recipes.isLoaded }"] {
+            XCTAssertTrue(view.contains(piece), piece)
+        }
+        let actions = try read(folder, "Components/RecipeList/RecipeList+Actions.swift")
+        XCTAssertTrue(actions.contains("func refresh() async throws {\n        try await recipes.load(page: 1)\n    }"))
+        let row = try read(folder, "Components/RecipeList/Views/RecipeList.RowView.swift")
+        for piece in ["struct RecipeListRowView: View {", "let recipe: Recipe", "AsyncImage(url: recipe.photo)", "Text(recipe.title)", "if let summary = recipe.summary {",
+                      "Label(recipe.minutes.formatted(), systemImage: \"clock\")", "Text(recipe.added, format: .relative(presentation: .named))",
+                      ".accessibilityHidden(true)", "#Preview {\n    RecipeListRowView(recipe: Recipe.preview)"] {
+            XCTAssertTrue(row.contains(piece), piece)
+        }
+    }
+
+    func testSettingsChooseAControlByTheFieldsTypeAndShowWhatTheyCannotWrite() async throws {
+        let folder = try await app()
+        try await Fixture.call(Fixture.settings, in: folder)
+        let view = try read(folder, "Components/Settings/Settings+View.swift")
+        XCTAssertTrue(view.contains("Section(\"Appearance\") {\n                Picker(\"Theme\", selection: config.binding(\\.appearance) { .appearance($0) }) {"))
+        XCTAssertTrue(view.contains("ForEach(AppAppearance.allCases) { option in\n                        Text(option.title).tag(option)"))
+        XCTAssertTrue(view.contains("LabeledContent(\"Launches\", value: config.state.launches.formatted())"), "launches has no writer of its own: shown, not bound")
+        XCTAssertTrue(view.contains("if let value = config.state.lastOpened {"))
+        XCTAssertTrue(view.contains("Button(\"Restore Defaults\") { Task { try? await restore() } }"))
+        XCTAssertTrue(view.contains(".formStyle(.grouped)"))
+    }
+
+    func testAComposePageSendsAndClosesOrCancels() async throws {
+        let folder = try await app()
+        try await Fixture.call(Fixture.compose, in: folder)
+        XCTAssertTrue(try read(folder, "Components/NewRecipe/NewRecipe.swift").contains("@Environment(\\.dismiss) var dismiss"))
+        let center = try read(folder, "Components/NewRecipe/NewRecipe+Center.swift")
+        XCTAssertTrue(center.contains("var title: String = \"\"") && center.contains("var minutes: Int = 30"))
+        let view = try read(folder, "Components/NewRecipe/NewRecipe+View.swift")
+        XCTAssertTrue(view.contains("TextField(\"Title\", text: center.$state.binding.title)"))
+        XCTAssertTrue(view.contains("TextField(\"Notes\", text: center.$state.binding.notes, axis: .vertical)"))
+        XCTAssertTrue(view.contains("Stepper(value: center.$state.binding.minutes) {"))
+        XCTAssertTrue(view.contains("ToolbarItem(placement: .cancellationAction) {\n                Button(\"Cancel\") { dismiss() }"))
+        XCTAssertTrue(view.contains("Task { if (try? await submit()) != nil { dismiss() } }"))
+        XCTAssertTrue(view.contains(".disabled(recipes.state.loading != nil || state.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)"))
+    }
+
+    func testASearchKeepsItsQueryAndSearchesOnceTheTypingSettles() async throws {
+        let folder = try await app()
+        try await Fixture.call(Fixture.search, in: folder)
+        XCTAssertTrue(try read(folder, "Components/RecipeSearch/RecipeSearch+Center.swift").contains("var query: String = \"\""))
+        let view = try read(folder, "Components/RecipeSearch/RecipeSearch+View.swift")
+        XCTAssertTrue(view.contains(".searchable(text: center.$state.binding.query, prompt: Text(\"Search\"))"))
+        XCTAssertTrue(view.contains(".onSubmit(of: .search) { Task { try? await search(text: state.query) } }"))
+        XCTAssertTrue(view.contains("try? await Task.sleep(nanoseconds: 300_000_000)"))
+        XCTAssertTrue(view.contains("ContentUnavailableView.search(text: state.query)"))
+    }
+
+    func testADetailPageShowsItsInputAndTheModelWritesTheViewItsLineDescribes() async throws {
+        let folder = try await app()
+        let model = FakeHostModel(bodies: ["VStack(alignment: .leading) {\n    Text(recipe.title).font(.title)\n}"])
+        let result = try await Fixture.call(Fixture.detail, in: folder, model: model)
+        XCTAssertEqual(model.asked.count, 1)
+        XCTAssertTrue(model.asked[0].user.contains("View: struct RecipeDetailHeaderView: View { let recipe: Recipe }"))
+        XCTAssertTrue(model.asked[0].user.contains("Recipe: id String, title String, summary String?, minutes Int, photo URL?, added Date"), "the value's fields")
+        XCTAssertTrue(model.asked[0].user.contains("What it shows: the photo large, the title and how long it takes"))
+        XCTAssertTrue(result.types.contains("RecipeDetailHeaderView"))
+        let component = try read(folder, "Components/RecipeDetail/RecipeDetail.swift")
+        XCTAssertTrue(component.contains("let recipe: Recipe\n\n    init(recipe: Recipe) {\n        self.recipe = recipe\n    }"))
+        let view = try read(folder, "Components/RecipeDetail/RecipeDetail+View.swift")
+        XCTAssertTrue(view.contains("RecipeDetailHeaderView(recipe: recipe)"))
+        XCTAssertFalse(view.contains("let recipe = recipe"))
+        XCTAssertTrue(view.contains(".navigationTitle(recipe.title)"))
+        XCTAssertTrue(view.contains("ToolbarItemGroup(placement: .secondaryAction) {"))
+        XCTAssertTrue(try read(folder, "Components/RecipeDetail/Views/RecipeDetail.HeaderView.swift").contains("Text(recipe.title).font(.title)"))
+    }
+
+    func testWithoutAModelADescribedViewIsMadeFromItsFields() async throws {
+        let folder = try await app()
+        let result = try await Fixture.call(Fixture.detail, in: folder)
+        XCTAssertTrue(result.notes.contains { $0.contains("RecipeDetailHeaderView is made from its values' fields") })
+        let header = try read(folder, "Components/RecipeDetail/Views/RecipeDetail.HeaderView.swift")
+        XCTAssertTrue(header.contains("Text(recipe.title)"))
+    }
+
+    func testTabsAThreePaneAndABlankPage() async throws {
+        let folder = try await app()
+        try await Fixture.call(Fixture.recipeList, in: folder)
+        try await Fixture.call(Fixture.grid, in: folder)
+        try await Fixture.call(Fixture.tabs, in: folder)
+        let tabs = try read(folder, "Components/Library/Library+View.swift")
+        XCTAssertTrue(tabs.contains("Picker(\"Section\", selection: center.$state.binding.tab) {"))
+        XCTAssertTrue(tabs.contains("switch state.tab {\n                case 0:\n                    RecipeList()\n                default:\n                    RecipeGrid()"))
+        try await Fixture.call(Fixture.browser, in: folder)
+        let browser = try read(folder, "Components/RecipeBrowser/RecipeBrowser+View.swift")
+        XCTAssertTrue(browser.contains("List(recipes.state.recipes, selection: recipes.binding(\\.favorite) { .favorite($0) }) { recipe in"))
+        XCTAssertTrue(browser.contains("if let recipe = recipes.state.recipes.first(where: { $0.id == recipes.state.favorite }) {"))
+        XCTAssertTrue(browser.contains("RecipeBrowserContentView(recipe: recipe)"))
+        let grid = try read(folder, "Components/RecipeGrid/Views/RecipeGrid.CellView.swift")
+        XCTAssertTrue(grid.contains(".background(Color.secondary.opacity(0.08), in: RoundedRectangle(cornerRadius: 12))"))
+        let model = FakeHostModel(bodies: ["List(recipes.state.recipes) { recipe in\n    Text(recipe.title)\n}"])
+        try await Fixture.call(Fixture.today, in: folder, model: model)
+        XCTAssertTrue(model.asked[0].user.contains("Relay recipes: RecipesService (state: recipes [Recipe]"))
+        XCTAssertTrue(try read(folder, "Components/Today/Today+View.swift").contains("private var content: some View {\n        List(recipes.state.recipes) { recipe in"))
+    }
+
+    func testAPageItCannotDrawIsRefusedWithEveryReason() async throws {
+        let folder = try await app()
+        let input = GraniteAppAgent.Input(make: .component, type: "FeedComponent", relays: ["feed: FeedService"], layout: .threePane,
+                                          shows: ["title = \"Feed\""], actions: ["view = feed.load()", "refresh = x", "refresh = y"])
+        do {
+            try await Fixture.call(input, in: folder)
+            XCTFail("the page is refused")
+        } catch {
+            let text = "\(error)"
+            for reason in ["`FeedService` is not in the project", "add `items = …`", "add `selection = …`", "`view` is the page's own", "`refresh` is named twice"] {
+                XCTAssertTrue(text.contains(reason), "\(reason) in \(text)")
+            }
+        }
+        do {
+            try await Fixture.call(GraniteAppAgent.Input(make: .component, type: "Today", layout: .blank), in: folder)
+            XCTFail("a blank page needs the model")
+        } catch {
+            XCTAssertTrue("\(error)".contains("comes from the host's model"))
+        }
+        XCTAssertFalse(FileManager.default.fileExists(atPath: folder.appendingPathComponent("Components/Feed").path))
+    }
+
+    func testAClosureOfAViewIsFilledByTheActionOfItsName() throws {
+        let spec = ComponentSpec(type: "Feed", layout: .list, relays: [], fields: [], shows: [],
+                                 actions: [try ActionLine.parse("vote(post Post, up Bool) = try await feed.vote(post: post, up: up)")],
+                                 views: [try ViewLine.parse("row(post Post, vote (Bool) -> Void, share () -> Void)")], index: ProjectIndex())
+        let row = spec.views[0]
+        XCTAssertEqual(spec.instance(row, item: "post", itemType: "Post"),
+                       "FeedRowView(post: post, vote: { up in Task { try? await vote(post: post, up: up) } })",
+                       "a closure no action fills is left out, and its control hides")
+        XCTAssertEqual(ComponentEmitter.writingOwnState("state.query = \"\"; feed.state.x == 1"), "_state.query.wrappedValue = \"\"; feed.state.x == 1")
+    }
+
+    /// A page over standard values (a `[String]` of tags) draws them by `id: \.self`: `String` is not Identifiable.
+    func testAListOfStandardValuesIsDrawnBySelf() async throws {
+        let folder = try await app()
+        try await Fixture.call(GraniteAppAgent.Input(make: .service, type: "Tags", state: ["tags [String] = []"]), in: folder)
+        try await Fixture.call(GraniteAppAgent.Input(make: .component, type: "TagList", relays: ["tags: TagsService"], layout: .list,
+                                                     shows: ["items = tags.state.tags", #"title = "Tags""#]), in: folder)
+        let view = try read(folder, "Components/TagList/TagList+View.swift")
+        XCTAssertTrue(view.contains("ForEach(tags.state.tags, id: \\.self) {"), view)
+        XCTAssertFalse(view.contains("ForEach(tags.state.tags) {"), view)
+    }
+}

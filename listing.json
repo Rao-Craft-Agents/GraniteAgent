@@ -1,0 +1,9 @@
+{
+  "name": "Granite",
+  "tagline": "Makes and grows an iOS and macOS app on Granite: the project, services, pages, navigation and modals.",
+  "category": "developer",
+  "keywords": ["swift", "swiftui", "granite", "xcode", "ios", "macos", "architecture", "loom"],
+  "platforms": ["macOS 14"],
+  "license": "MIT",
+  "description": "Everything Granite-specific an iOS and macOS app needs, from compact lines. `make: project` writes a new app in the Loom layout: its Xcode project with synchronized folders, unit and UI tests per platform and Granite pinned, the root that boots it, its settings, and the first page. `make: service` writes a service in the single-writer shape from lines like `load(page Int) -> posts = API.posts(page: page)`, with its reducers, its Ops and their tests. `make: component` writes a page laid out from what it shows and does (a list, a grid, a detail, a form, settings, a search, compose, tabs, three panes): loading, empty and error states, pull to refresh, load more, menus and a toolbar, bound to its services' real fields. `make: navigation` and `make: modals` add tabs or a sidebar, a layout service, sheets, alerts, toasts and panels that travel with a person. `make: link` brings Granite into an Xcode project made without it.\n\nThe host's model is asked only for what is the app's own (work no line says how to do, a subview a line describes), and every answer is parsed before it lands. A call it cannot honour is refused with every reason at once, and nothing is written.\n\nOne of the Rao Craft Agents: independent packages that, tagged in prompts along the life of a project, build an app of Loom's quality."
+}
