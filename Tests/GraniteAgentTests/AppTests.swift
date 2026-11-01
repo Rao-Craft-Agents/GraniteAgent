@@ -32,6 +32,8 @@ final class AppTests: XCTestCase {
             XCTAssertTrue(written.contains(path), path)
         }
         let destinations = try read(folder, "Shared/Utility/AppDestination.swift")
+        XCTAssertTrue(destinations.contains("static var launchArgument: AppDestination? {"), "a launch picks its page: -destination <name>")
+        XCTAssertTrue(try read(folder, "Services/LayoutService/LayoutService+Center.swift").contains("AppDestination.launchArgument ?? ."), "and wins over the default")
         XCTAssertTrue(destinations.contains("case recipes\n    case search\n    case settings"))
         XCTAssertTrue(destinations.contains("case .recipes: String(localized: \"Recipes\")"))
         XCTAssertTrue(destinations.contains("case .search: RecipeSearch()"))
@@ -40,7 +42,7 @@ final class AppTests: XCTestCase {
         XCTAssertTrue(iOS.contains("TabView(selection: layout.binding(\\.destination) { .destination($0) }) {"))
         let macOS = try read(folder, "macOS/PlatformNavigationView.swift")
         XCTAssertTrue(macOS.contains(".frame(minWidth: LayoutService.minimumWidth, minHeight: LayoutService.minimumHeight)"))
-        XCTAssertTrue(try read(folder, "Services/LayoutService/LayoutService+Center.swift").contains("var destination: AppDestination = .recipes"))
+        XCTAssertTrue(try read(folder, "Services/LayoutService/LayoutService+Center.swift").contains("var destination: AppDestination = AppDestination.launchArgument ?? .recipes"))
         let home = try read(folder, "Components/Home/Home+View.swift")
         XCTAssertTrue(home.contains("case .ready:\n                PlatformNavigationView()"))
         XCTAssertTrue(home.contains("AppRoot.shared.boot()"), "the boot gating stays")

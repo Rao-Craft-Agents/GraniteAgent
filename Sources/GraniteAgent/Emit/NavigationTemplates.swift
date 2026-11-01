@@ -20,6 +20,11 @@ enum NavigationTemplates {
         code.line()
         code.line("var id: Self { self }")
         code.line()
+        code.line("/// The destination a launch asks for with `-destination <name>`: how UI tests and screenshots open a page.")
+        code.scope("static var launchArgument: AppDestination? {") { code in
+            code.line("UserDefaults.standard.string(forKey: \"destination\").flatMap(AppDestination.init(rawValue:))")
+        }
+        code.line()
         code.line("/// The destination's name, as the tab bar and the sidebar show it.")
         code.scope("var title: String {") { code in
             code.switchOn("self") { code in

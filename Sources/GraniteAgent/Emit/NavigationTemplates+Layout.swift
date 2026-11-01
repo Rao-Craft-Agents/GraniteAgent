@@ -90,8 +90,8 @@ extension NavigationTemplates {
         extension LayoutService {
             struct Center: GraniteCenter {
                 struct State: GraniteState {
-                    /// The destination on screen.
-                    var destination: AppDestination = .\(first)
+                    /// The destination on screen: the one a launch asks for (`-destination search`), else the first.
+                    var destination: AppDestination = AppDestination.launchArgument ?? .\(first)
                     /// Whether the window is compact (a tab bar) or expanded (a sidebar beside the page).
                     var style: LayoutStyle = .compact
                     /// What the detail pane shows, by id; nil when it is closed.
@@ -103,10 +103,12 @@ extension NavigationTemplates {
                         case destination
                     }
 
-                    /// Only the destination is kept between launches; one the app no longer has reads as the first.
+                    /// Only the destination is kept between launches; one the app no longer has reads as the first, and
+                    /// one a launch asks for wins over both.
                     init(from decoder: Decoder) throws {
                         let container = try decoder.container(keyedBy: CodingKeys.self)
-                        destination = (try? container.decodeIfPresent(AppDestination.self, forKey: .destination)) ?? .\(first)
+                        destination = AppDestination.launchArgument
+                            ?? (try? container.decodeIfPresent(AppDestination.self, forKey: .destination)) ?? .\(first)
                     }
                 }
 
