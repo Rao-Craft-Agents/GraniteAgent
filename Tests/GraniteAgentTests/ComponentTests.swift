@@ -176,4 +176,23 @@ final class ComponentTests: XCTestCase {
         XCTAssertTrue(view.contains("ForEach(tags.state.tags, id: \\.self) {"), view)
         XCTAssertFalse(view.contains("ForEach(tags.state.tags) {"), view)
     }
+
+    /// A type a local package declares is imported wherever a written file names it: a row drawn from it, a service's
+    /// Ops test whose sample is one.
+    func testAPackagesTypeIsImportedWhereverAFileNamesIt() async throws {
+        let folder = try await app()
+        let kit = folder.appendingPathComponent("Packages/TrailKit")
+        try FileManager.default.createDirectory(at: kit.appendingPathComponent("Sources/TrailKit"), withIntermediateDirectories: true)
+        try "// swift-tools-version:6.0\nimport PackageDescription\nlet package = Package(name: \"TrailKit\", targets: [.target(name: \"TrailKit\")])\n"
+            .write(to: kit.appendingPathComponent("Package.swift"), atomically: true, encoding: .utf8)
+        try "public struct Trail: Codable, Hashable, Identifiable, Sendable {\n    public var id: String\n    public var name: String\n    public static let preview = Trail(id: \"t\", name: \"Ridge\")\n}\n"
+            .write(to: kit.appendingPathComponent("Sources/TrailKit/Trail.swift"), atomically: true, encoding: .utf8)
+        try await Fixture.call(GraniteAppAgent.Input(make: .service, type: "Trails", state: ["trails [Trail] = []"]), in: folder)
+        try await Fixture.call(GraniteAppAgent.Input(make: .component, type: "TrailList", relays: ["trails: TrailsService"], layout: .list,
+                                                     shows: ["items = trails.state.trails", #"title = "Trails""#]), in: folder)
+        for path in ["Services/TrailsService/TrailsService+Center.swift", "Tests/TrailsOpsTests.swift", "Components/TrailList/Views/TrailList.RowView.swift"] {
+            let text = try read(folder, path)
+            XCTAssertEqual(text.components(separatedBy: "import TrailKit\n").count - 1, 1, "\(path) imports TrailKit once:\n\(text.prefix(300))")
+        }
+    }
 }

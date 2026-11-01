@@ -160,6 +160,7 @@ public struct GraniteAppAgent: GraniteAgentPackage {
         case .modals: plan = try ModalsMake(input: input, workspace: workspace).plan()
         }
         if input.make != .project { try ProjectSync.include(&plan, in: workspace) }
+        PackageImports.add(to: &plan, index: ProjectIndex(root: workspace.root))
         guard !plan.files.isEmpty else {
             return GraniteResult(path: nil, paths: [], make: input.make.rawValue, types: plan.types, notes: plan.notes)
         }
