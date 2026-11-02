@@ -105,15 +105,23 @@ struct ServiceMake {
             problems.append("`\(event.verb)` uses " + unseen.map { "`\($0)`" }.joined(separator: ", ")
                             + ", which its work cannot see: it sees " + ways.joined(separator: ", ") + reach)
         }
-        // A client no package declares (`SocialAPI.loadFeed(…)`, Margin 2026-11-01) cannot build: the app needs its
-        // API client first. Only names that read as a client are held to this; a framework's types are not known here.
+        // A client no package declares (`SocialAPI.loadFeed(…)`, Margin 2026-11-01) cannot build. When the app has a client,
+        // the refusal names it: told to "make the client first" while `MarginClient` existed, the model gave up on the agent
+        // (Margin c4, 2026-11-01). Only names that read as a client are held to this; a framework's types are not known here.
+        let clientSuffixes = ["API", "Client", "Kit", "Store", "Repository", "Backend", "Server"]
+        let appClients = index.declared.filter { name in name.first?.isUppercase == true && clientSuffixes.contains { name.hasSuffix($0) } }.sorted()
         for event in events {
             guard let expression = event.expression?.trimmingCharacters(in: .whitespaces),
                   let root = expression.split(whereSeparator: { !($0.isLetter || $0.isNumber || $0 == "_") }).first.map(String.init),
                   root.first?.isUppercase == true, !index.declared.contains(root),
-                  ["API", "Client", "Kit", "Store", "Repository", "Backend", "Server"].contains(where: { root.hasSuffix($0) }) else { continue }
-            problems.append("`\(event.verb)` calls `\(root)`, which the project does not declare: make the app's API client first "
-                            + "(`$network`, with `$models` for its types and `$mocks` for data before a server exists), then call it by its type")
+                  clientSuffixes.contains(where: { root.hasSuffix($0) }) else { continue }
+            if appClients.isEmpty {
+                problems.append("`\(event.verb)` calls `\(root)`, which the project does not declare: make the app's API client first "
+                                + "(`$network`, with `$models` for its types and `$mocks` for data before a server exists), then call it by its type")
+            } else {
+                problems.append("`\(event.verb)` calls `\(root)`, which the project does not declare; the app's client is "
+                                + appClients.prefix(3).map { "`\($0)`" }.joined(separator: " or ") + ": call it by that type")
+            }
         }
         // `MarginClient.posts(…)` on the type, when `posts` is only ever an instance's (Margin, 2026-11-01).
         for event in events {

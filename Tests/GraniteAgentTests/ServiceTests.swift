@@ -220,6 +220,16 @@ final class ServiceTests: XCTestCase {
             XCTAssertTrue(text.contains("`load` calls `SocialAPI`, which the project does not declare") && text.contains("`$network`"), text)
             XCTAssertFalse(text.contains("`note` calls"), "a framework's type is not held to it: \(text)")
         }
+        // With a client in the app, the refusal names it rather than sending the model to make one (Margin c4).
+        try "public struct MarginClient { public init() {} }\n".write(to: folder.appendingPathComponent("Shared/MarginClient.swift"), atomically: true, encoding: .utf8)
+        do {
+            try await Fixture.call(input, in: folder)
+            XCTFail("the call is refused")
+        } catch {
+            let text = "\(error)"
+            XCTAssertTrue(text.contains("`load` calls `SocialAPI`, which the project does not declare; the app's client is `MarginClient`: call it by that type"), text)
+            XCTAssertFalse(text.contains("`$network`"), text)
+        }
     }
 
     /// An instance's function called on its type is refused, naming the shared instance when the app has one (Margin).
