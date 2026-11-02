@@ -126,6 +126,12 @@ struct ServiceMake {
             problems.append("`\(event.verb)` calls `\(parts[0]).\(parts[1])(…)` on the type, and `\(parts[1])` is an instance's: "
                             + (shared ? "call it on the shared one (`\(parts[0]).current.\(parts[1])(…)`)" : "call it on an instance (`\(parts[0])().\(parts[1])(…)`, or the one the app keeps)"))
         }
+        // A call on a type the project declares must name a function it has, with labels one of its declarations takes
+        // (Margin, 2026-11-01: `posts(page:per_page:)` for `posts(page:perPage:)`, and a `users(…)` no one declared).
+        for event in events {
+            guard let expression = event.expression?.trimmingCharacters(in: .whitespaces), let problem = Self.mislabelled(expression, index: index) else { continue }
+            problems.append("`\(event.verb)`: " + problem)
+        }
         let needsBodies = events.filter { $0.expression == nil }
         if !needsBodies.isEmpty, model == nil {
             problems.append("\(needsBodies.map(\.verb).joined(separator: ", ")) \(needsBodies.count == 1 ? "has" : "have") no `= expression`, and this host has no model to write the work: give the call that does it")
@@ -299,6 +305,43 @@ struct ServiceMake {
             position = end
         }
         return names
+    }
+
+    /// Why `expression`'s last call cannot be made as written, when its receiver starts from a type the project
+    /// declares: a function declared nowhere, or labels none of its declarations takes.
+    static func mislabelled(_ expression: String, index: ProjectIndex) -> String? {
+        // A member read off the answer (`.posts`) is not part of the call.
+        let call = expression.replacingOccurrences(of: #"\)\.[A-Za-z_]\w*$"#, with: ")", options: .regularExpression)
+        guard let root = call.split(whereSeparator: { !($0.isLetter || $0.isNumber || $0 == "_") }).first.map(String.init),
+              root.first?.isUppercase == true, index.declared.contains(root),
+              call.hasSuffix(")"), let method = Self.method(of: call), method != root else { return nil }
+        guard let declared = index.parameters[method], !declared.isEmpty else {
+            return "`\(method)(…)` is declared nowhere in the project: call a function its client has"
+        }
+        // The labels the call gives, in order.
+        var depth = 0, open: String.Index?
+        for position in call.indices.reversed() {
+            if call[position] == ")" { depth += 1 } else if call[position] == "(" { depth -= 1; if depth == 0 { open = position; break } }
+        }
+        guard let open else { return nil }
+        let inside = String(call[call.index(after: open)..<call.index(before: call.endIndex)])
+        let given: [String] = ProjectIndex.topLevel(inside).compactMap { piece in
+            let text = piece.trimmingCharacters(in: .whitespaces)
+            guard !text.isEmpty else { return nil }
+            if let colon = text.firstIndex(of: ":"), text[..<colon].allSatisfy({ $0.isLetter || $0.isNumber || $0 == "_" }) { return String(text[..<colon]) }
+            return ""
+        }
+        func fits(_ list: [(label: String, defaulted: Bool)]) -> Bool {
+            var next = 0
+            for parameter in list {
+                if next < given.count, given[next] == parameter.label { next += 1 } else if !parameter.defaulted { return false }
+            }
+            return next == given.count
+        }
+        guard !declared.contains(where: fits) else { return nil }
+        let shown = given.map { $0.isEmpty ? "_:" : "\($0):" }.joined()
+        let ways = declared.prefix(3).map { list in "`\(method)(" + list.map { ($0.label.isEmpty ? "_" : $0.label) + ":" }.joined() + ")`" }
+        return "`\(method)(\(shown))` takes no labels of its declarations: it is \(ways.joined(separator: " or "))"
     }
 
     /// The function a call ends in: `posts` in `HearthClient.current.posts(page: page)`.

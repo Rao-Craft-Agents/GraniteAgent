@@ -51,6 +51,8 @@ struct ProjectIndex {
     var statics: Set<String> = []
     /// Functions declared without `static`, by name.
     var instances: Set<String> = []
+    /// Each function's parameters as declared, by name: their labels in order and whether each has a default.
+    var parameters: [String: [[(label: String, defaulted: Bool)]]] = [:]
     /// Types with a shared instance (`static var current: HearthClient`, `static let shared`), by type.
     var shared: Set<String> = []
     /// Each type's shape as written: its declaration, its initializers, its cases and its stored fields, one line
@@ -122,6 +124,7 @@ struct ProjectIndex {
             if types[name] == nil || types[name]?.fields.isEmpty == true { types[name] = info }
         }
         for (name, type) in Self.functionReturns(in: text) { returns[name, default: []].insert(type) }
+        for (name, list) in Self.functionParameters(in: text) { parameters[name, default: []].append(list) }
         if let pattern = try? NSRegularExpression(pattern: #"(?m)^[ \t]*(?:@\w+[ \t]+)*(?:(?:public|private|fileprivate|internal|open|nonisolated|final|override|mutating)[ \t]+)*((?:static|class)[ \t]+)?func[ \t]+([A-Za-z_]\w*)"#) {
             let source = text as NSString
             for match in pattern.matches(in: text, range: NSRange(location: 0, length: source.length)) {
@@ -158,6 +161,48 @@ struct ProjectIndex {
             if !type.isEmpty { found.append((source.substring(with: match.range(at: 1)), type)) }
         }
         return found
+    }
+
+    /// Each `func name(…)`'s parameters in `text`: its labels (`_` read as none) and whether each has a default.
+    static func functionParameters(in text: String) -> [(name: String, list: [(label: String, defaulted: Bool)])] {
+        let source = text as NSString
+        guard let pattern = try? NSRegularExpression(pattern: #"\bfunc\s+([A-Za-z_][A-Za-z0-9_]*)\s*(?:<[^>{]*>)?\s*\("#) else { return [] }
+        var found: [(name: String, list: [(label: String, defaulted: Bool)])] = []
+        for match in pattern.matches(in: text, range: NSRange(location: 0, length: source.length)) {
+            let open = match.range.location + match.range.length
+            var position = open, depth = 1
+            while position < source.length, depth > 0 {
+                let unit = source.character(at: position)
+                if unit == 40 { depth += 1 } else if unit == 41 { depth -= 1 }
+                position += 1
+            }
+            guard depth == 0 else { continue }
+            let inside = source.substring(with: NSRange(location: open, length: position - open - 1))
+            var list: [(label: String, defaulted: Bool)] = []
+            for piece in Self.topLevel(inside) where !piece.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                let head = piece.components(separatedBy: ":")[0].trimmingCharacters(in: .whitespacesAndNewlines)
+                let words = head.split(separator: " ").map(String.init)
+                let label = words.first.map { $0 == "_" ? "" : $0 } ?? ""
+                list.append((label, piece.contains("=")))
+            }
+            found.append((source.substring(with: match.range(at: 1)), list))
+        }
+        return found
+    }
+
+    /// `text` split at its top-level commas: none inside brackets, parentheses, angle brackets or strings.
+    static func topLevel(_ text: String) -> [String] {
+        var pieces: [String] = [], current = "", depth = 0, inString = false
+        for character in text {
+            if character == "\"" { inString.toggle() }
+            if !inString {
+                if "([{<".contains(character) { depth += 1 } else if ")]}>".contains(character) { depth -= 1 }
+                if character == ",", depth == 0 { pieces.append(current); current = ""; continue }
+            }
+            current.append(character)
+        }
+        pieces.append(current)
+        return pieces
     }
 
     /// The module a file of a package compiles into: the folder under `Sources/`.

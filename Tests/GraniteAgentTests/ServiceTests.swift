@@ -248,6 +248,31 @@ final class ServiceTests: XCTestCase {
         try await Fixture.call(fixed, in: folder)
     }
 
+    /// A call on a declared type names a function it has, with labels a declaration takes (Margin, 2026-11-01).
+    func testACallsLabelsAndNameAreCheckedAgainstTheDeclarations() async throws {
+        let folder = try await app()
+        try """
+        public struct ShelfClient {
+            public static var current = ShelfClient()
+            public func shelf(page: Int? = nil, perPage: Int? = nil, sort: String? = nil) async throws -> [Recipe] { [] }
+        }
+        """.write(to: folder.appendingPathComponent("Shared/ShelfClient.swift"), atomically: true, encoding: .utf8)
+        let input = GraniteAppAgent.Input(make: .service, type: "Shelf", state: ["recipes [Recipe] = []"],
+                                          events: ["load(page Int) -> recipes = ShelfClient.current.shelf(page: page, per_page: 20)",
+                                                   "more(page Int) +> recipes = ShelfClient.current.shelves(page: page)"])
+        do {
+            try await Fixture.call(input, in: folder)
+            XCTFail("the call is refused")
+        } catch {
+            let text = "\(error)"
+            XCTAssertTrue(text.contains("`load`: `shelf(page:per_page:)` takes no labels of its declarations: it is `shelf(page:perPage:sort:)`"), text)
+            XCTAssertTrue(text.contains("`more`: `shelves(…)` is declared nowhere in the project"), text)
+        }
+        var fixed = input
+        fixed.events = ["load(page Int) -> recipes = ShelfClient.current.shelf(page: page, sort: \"new\")"]
+        try await Fixture.call(fixed, in: folder)
+    }
+
     func testARelayThatWouldLoopIsRefused() async throws {
         let folder = try await app()
         try await Fixture.call(GraniteAppAgent.Input(make: .service, type: "Index", state: ["count Int = 0"],
