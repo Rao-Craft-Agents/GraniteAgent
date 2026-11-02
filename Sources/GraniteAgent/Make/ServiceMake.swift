@@ -109,7 +109,10 @@ struct ServiceMake {
         // the refusal names it: told to "make the client first" while `MarginClient` existed, the model gave up on the agent
         // (Margin c4, 2026-11-01). Only names that read as a client are held to this; a framework's types are not known here.
         let clientSuffixes = ["API", "Client", "Kit", "Store", "Repository", "Backend", "Server"]
-        let appClients = index.declared.filter { name in name.first?.isUppercase == true && clientSuffixes.contains { name.hasSuffix($0) } }.sorted()
+        // A client first by its name (`…Client`, `…API`); a store or a kit only when the app has nothing named so. Margin
+        // c8, 2026-11-02: `KeychainTokenStore` and `MemoryTokenStore` were offered beside `MarginClient` as the app's client.
+        let named = { (suffixes: [String]) in index.declared.filter { name in name.first?.isUppercase == true && suffixes.contains { name.hasSuffix($0) } }.sorted() }
+        let appClients = named(["Client", "API"]).isEmpty ? named(clientSuffixes) : named(["Client", "API"])
         for event in events {
             guard let expression = event.expression?.trimmingCharacters(in: .whitespaces),
                   let root = expression.split(whereSeparator: { !($0.isLetter || $0.isNumber || $0 == "_") }).first.map(String.init),

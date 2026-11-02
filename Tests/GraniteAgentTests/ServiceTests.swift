@@ -236,6 +236,7 @@ final class ServiceTests: XCTestCase {
         }
         // With a client in the app, the refusal names it rather than sending the model to make one (Margin c4).
         try "public struct MarginClient { public init() {} }\n".write(to: folder.appendingPathComponent("Shared/MarginClient.swift"), atomically: true, encoding: .utf8)
+        try "public struct KeychainTokenStore { public init() {} }\n".write(to: folder.appendingPathComponent("Shared/KeychainTokenStore.swift"), atomically: true, encoding: .utf8)
         do {
             try await Fixture.call(input, in: folder)
             XCTFail("the call is refused")
@@ -243,6 +244,7 @@ final class ServiceTests: XCTestCase {
             let text = "\(error)"
             XCTAssertTrue(text.contains("`load` calls `SocialAPI`, which the project does not declare; the app's client is `MarginClient`: call it by that type"), text)
             XCTAssertFalse(text.contains("`$network`"), text)
+            XCTAssertFalse(text.contains("KeychainTokenStore"), "a token store is not offered as the client: \(text)")
         }
     }
 
