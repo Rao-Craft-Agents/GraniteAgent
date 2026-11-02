@@ -86,6 +86,8 @@ struct ComponentMake {
         // What an action reaches through a relay is the service's: its entries, `set`, `binding`, `state`, `isLoaded`.
         for action in actions {
             problems += Self.relayMisuse(in: action.statements.joined(separator: "\n"), relays: relays, index: index).map { "`\(action.name)`: " + $0 }
+            problems += Self.unseen(in: action.statements.joined(separator: "\n"), relays: relays, actions: actions.map(\.name),
+                                    names: (fields + inputs + action.params).map(\.name), index: index).map { "`\(action.name)`: " + $0 }
         }
         var views: [ViewSpec] = []
         for line in input.views ?? [] where !line.trimmingCharacters(in: .whitespaces).isEmpty {
@@ -297,6 +299,44 @@ struct ComponentMake {
                                     + (entries.isEmpty ? "; it has no work yet: " + add
                                        : ": its work is " + entries.map { "`\($0)(…)`" }.joined(separator: ", ") + "; to add `\(member)`, " + add))
                 }
+            }
+        }
+        return problems
+    }
+
+    /// What an action can reach: the page's relays, its actions, its state and inputs, and the language's own words.
+    static let actionWords: Set<String> = [
+        "try", "await", "let", "var", "if", "guard", "else", "return", "self", "true", "false", "nil", "in", "case", "switch",
+        "for", "while", "do", "catch", "throw", "is", "as", "some", "any", "state", "center", "withAnimation", "print", "max", "min",
+        "abs", "zip", "stride", "dismiss", "openURL", "openWindow", "defer", "where",
+    ]
+
+    /// Each name an action calls or starts from that the page cannot see: `loadFeed(…)` when the work is the relay's
+    /// (`feed.load(…)`), or `modals.…` with no `modals` relay. Margin c7, 2026-11-02: both were written into the page
+    /// and the app did not build.
+    static func unseen(in text: String, relays: [Relay], actions: [String], names: [String], index: ProjectIndex) -> [String] {
+        let code = text.replacingOccurrences(of: #""(?:[^"\\]|\\.)*""#, with: "\"\"", options: .regularExpression)
+        // Names the statements bind themselves: `let x`, `for x in`, a closure's `{ a, b in`.
+        let bound = code.matches(#"(?:let|var|for)\s+([a-z_][A-Za-z0-9_]*)"#)
+            + code.matches(#"\{\s*([A-Za-z0-9_,\s]+?)\s+in\b"#).flatMap { $0.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) } }
+        let seen = Set(relays.map(\.name) + actions + names + bound).union(actionWords)
+        var problems: [String] = [], said: Set<String> = []
+        for name in code.matches(#"(?<![\w.$])([a-z_][A-Za-z0-9_]*)\s*[(.]"#) where !seen.contains(name) && said.insert(name).inserted {
+            let called = code.range(of: #"(?<![\w.$])"# + name + #"\s*\("#, options: .regularExpression) != nil
+            if called {
+                // The relays whose work this might be: an entry with the same name, or one the name ends with.
+                let owners = relays.compactMap { relay -> String? in
+                    guard let entries = index.services[relay.type]?.entries.filter({ !["set", "binding"].contains($0) }) else { return nil }
+                    let hit = entries.first { $0 == name } ?? entries.first { name.lowercased().hasPrefix($0.lowercased()) }
+                    return hit.map { "`\(relay.name).\($0)(…)`" }
+                }
+                problems.append("`\(name)(…)` is not something the page can call: "
+                                + (owners.isEmpty ? "its work is a relay's (`relayName.work(…)`) or another action" : "call " + owners.joined(separator: " or ")))
+            } else {
+                let services = index.services.keys.sorted()
+                let match = services.first { $0.lowercased().hasPrefix(name.lowercased().hasSuffix("s") ? String(name.dropLast()).lowercased() : name.lowercased()) }
+                problems.append("`\(name)` is not one of the page's relays" + (match.map { ": add it to `relays` (`\(name): \($0)`)" }
+                                ?? ", and no service is called that: add the relay, or make the service first"))
             }
         }
         return problems

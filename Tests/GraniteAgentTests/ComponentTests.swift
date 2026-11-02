@@ -231,6 +231,25 @@ final class ComponentTests: XCTestCase {
         }
     }
 
+    /// An action reaches only what the page can see: a bare call to a service's work, or a name no relay holds, is refused
+    /// naming the fix (Margin c7, 2026-11-02: `loadFeed(…)` and `modals.set(…)` written into pages that did not build).
+    func testAnActionReachesOnlyWhatThePageSees() async throws {
+        let folder = try await app()
+        let input = GraniteAppAgent.Input(make: .component, type: "Shelf", relays: ["recipes: RecipesService"], layout: .list,
+                                          shows: ["items = recipes.state.recipes", "title = \"Shelf\""],
+                                          actions: ["refresh = try await loadRecipes(page: 1)", "reply = modals.set(.show(id: \"reply\"))",
+                                                    "again = refresh(); print(\"done (x)\")"])
+        do {
+            try await Fixture.call(input, in: folder)
+            XCTFail("the page is refused")
+        } catch {
+            let text = "\(error)"
+            XCTAssertTrue(text.contains("`refresh`: `loadRecipes(…)` is not something the page can call: call `recipes.load"), text)
+            XCTAssertTrue(text.contains("`reply`: `modals` is not one of the page's relays"), text)
+            XCTAssertFalse(text.contains("`again`"), "another action and the language's own words are seen: \(text)")
+        }
+    }
+
     /// A list of a service's field that no action loads is refused, naming the work that would (Margin, 2026-11-01).
     func testAListNothingLoadsIsRefused() async throws {
         let folder = try await app()
