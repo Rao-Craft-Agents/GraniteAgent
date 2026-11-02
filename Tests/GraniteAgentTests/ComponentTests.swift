@@ -230,6 +230,22 @@ final class ComponentTests: XCTestCase {
         }
     }
 
+    /// A list of a service's field that no action loads is refused, naming the work that would (Margin, 2026-11-01).
+    func testAListNothingLoadsIsRefused() async throws {
+        let folder = try await app()
+        let input = GraniteAppAgent.Input(make: .component, type: "Shelf", relays: ["recipes: RecipesService"], layout: .list,
+                                          shows: ["items = recipes.state.recipes", "title = \"Shelf\""])
+        do {
+            try await Fixture.call(input, in: folder)
+            XCTFail("the page is refused")
+        } catch {
+            XCTAssertTrue("\(error)".contains("`recipes.state.recipes` is loaded by nothing on this page: add a `refresh` action that loads it, from RecipesService's work (`func load(page: Int)"), "\(error)")
+        }
+        var loaded = input
+        loaded.actions = ["refresh = try await recipes.load(page: 1)"]
+        try await Fixture.call(loaded, in: folder)
+    }
+
     func testAPageItCannotDrawIsRefusedWithEveryReason() async throws {
         let folder = try await app()
         let input = GraniteAppAgent.Input(make: .component, type: "FeedComponent", relays: ["feed: FeedService"], layout: .threePane,

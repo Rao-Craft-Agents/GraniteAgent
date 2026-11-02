@@ -108,6 +108,20 @@ struct ComponentMake {
         switch layout {
         case .list, .grid, .search, .threePane:
             if !has("items") { problems.append("a \(layout.rawValue) page lists something: add `items = …` to shows, like `items = feed.state.posts`") }
+            // A list of a service's field that no action loads stays empty (Margin, 2026-11-01: a Feed with no actions
+            // showed "No posts yet" on a full mock backend). Name the work that would load it.
+            if let items = shows.first(where: { $0.role == "items" }),
+               let match = items.expression.range(of: #"^\s*([a-z]\w*)\.state\.\w+"#, options: .regularExpression),
+               let relayName = items.expression[match].split(separator: ".").first.map(String.init),
+               let relay = relays.first(where: { $0.name == relayName }), let service = index.services[relay.type] {
+                let work = service.signatures.filter { !$0.contains("func set(") && !$0.contains("func binding") }
+                let entries = service.entries.filter { !["set", "binding"].contains($0) }
+                let loads = actions.contains { action in entries.contains { entry in action.statements.contains { $0.contains("\(relayName).\(entry)(") } } }
+                if !work.isEmpty, !loads {
+                    problems.append("`\(items.expression)` is loaded by nothing on this page: add a `refresh` action that loads it, "
+                                    + "from \(relay.type)'s work (" + work.prefix(4).map { "`\($0)`" }.joined(separator: "; ") + ")")
+                }
+            }
             if layout == .threePane, !has("selection") { problems.append("a threePane page shows the selected item: add `selection = …` (a service's field, or `state.selected` with `selected String?` in state)") }
         case .detail:
             if !has("item") { problems.append("a detail page shows one item: add `item = …` to shows, like `item = feed.state.selected` or an input (`let post Post`, `item = post`)") }
