@@ -1,0 +1,19 @@
+{
+  "name": "Granite",
+  "tagline": "Makes and grows an iOS and macOS app on Granite: the project, services, pages, navigation and modals.",
+  "category": "developer",
+  "keywords": [
+    "swift",
+    "swiftui",
+    "granite",
+    "xcode",
+    "ios",
+    "macos",
+    "architecture",
+    "loom"
+  ],
+  "platforms": [
+    "macOS 14"
+  ],
+  "license": "MIT"
+}
