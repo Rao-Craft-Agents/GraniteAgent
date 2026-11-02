@@ -356,5 +356,30 @@
     "Outcome card for c6"
    ]
   ]
+ },
+ {
+  "run": "c7",
+  "date": "2026-11-02",
+  "model": "Qwen3-Coder-Next-REAP-48B-A3B",
+  "sketch": "on",
+  "window": "64k",
+  "wall": 910,
+  "first": 217,
+  "agents": "5 / 1 / 1",
+  "hand": 9,
+  "in_agents": 25,
+  "model_time": 885,
+  "compactions": "atAgentCall 39k→26k",
+  "peak": "77%",
+  "stop": "loopLimit",
+  "build": "failed",
+  "checks": "room before the agents pass · compaction works — · the breath pass · no thrash **fail**",
+  "entry": "### c7\n\n*2026-11-02 · Qwen3-Coder-Next-REAP-48B-A3B · sketch on · 64k window · Craft 49ccea1 · granite 52e1f23*\n\n**Prompt**:\n\n> Now give Margin its pages with $granite: a Feed that shows FeedService's posts in loom's FeedView and loads them when it appears, a Post page with its thread, and a Profile; then navigation with Feed and Profile as tabs.\n\n**Time**: 910 s in all; 25 s inside agents, 885 s the model and Craft; first agent call at 217 s.\n\n**Calls** (offset s · duration s · result):\n\n- 217 · 22.2 · `granite` ok — granite\n- 249 · 0.3 · `granite` **refused** — granite: granite refused: `PostPage` is MarginKit's type: name the page something else, like `PostDetail`\n- 259 · 0.8 · `granite` ok — granite\n- 269 · 0.9 · `granite` ok — granite\n- 275 · 1.1 · `granite` ok — granite\n- 418 · 0.0 · `write_file` ok — Services/FeedService/Ops/LoadFeed.swift\n- 448 · 0.0 · `edit_file` ok — Services/FeedService/FeedService.swift\n- 564 · 0.0 · `edit_file` ok — Services/PostService/PostService.swift\n- 590 · 0.0 · `edit_file` ok — Services/UserService/UserService.swift\n- 632 · 0.0 · `edit_file` ok — Components/PostDetail/PostDetail.swift\n- 643 · 0.0 · `edit_file` ok — Components/PostDetail/PostDetail+Actions.swift\n- 652 · 0.0 · `edit_file` ok — Components/ProfileDetail/ProfileDetail+Actions.swift\n- 707 · 0.0 · `edit_file` ok — Components/PostDetail/PostDetail+View.swift\n- 748 · 0.0 · `edit_file` ok — Components/ProfileDetail/ProfileDetail+View.swift\n- 763 · 0.0 · `edit_file` ok — Services/UserService/UserService.swift\n\n58 reads, 76 calls in all.\n\n**Who wrote what**:\n\n- `granite`: 27 files — Components/FeedPage/FeedPage+Actions.swift, Components/FeedPage/FeedPage+Center.swift, Components/FeedPage/FeedPage+View.swift, Components/FeedPage/FeedPage.swift, Components/FeedPage/Views/FeedPage.RowView.swift, Components/Home/Home+View.swift, Components/PostDetail/PostDetail+Actions.swift, Components/PostDetail/PostDetail+Center.swift …\n- by hand: 9 files — Components/PostDetail/PostDetail+Actions.swift, Components/PostDetail/PostDetail+View.swift, Components/PostDetail/PostDetail.swift, Components/ProfileDetail/ProfileDetail+Actions.swift, Components/ProfileDetail/ProfileDetail+View.swift, Services/FeedService/FeedService.swift, Services/FeedService/Ops/LoadFeed.swift, Services/PostService/PostService.swift, Services/UserService/UserService.swift\n\n**Window**: peak 77% of 64k; compactions: atAgentCall 39k→26k; checks: room before the agents pass · compaction works — · the breath pass · no thrash **fail**; 9 re-reads after the first compaction\n\n**Stopped**: loopLimit: out of tool rounds (50)\n\n**Build**: failed\n- `PostDetail.swift:9:24: error: cannot find type 'ModalService' in scope`\n- `FeedPage+Actions.swift:8:19: error: cannot find 'loadFeed' in scope (granite's output, replayed)`\n\n**Notes**:\n- granite was called first (217 s) and made the Feed, Post and Profile pages and the navigation; its one refusal (a page named like MarginKit's PostPage) was corrected at once. Then the model hand-edited services and pages, and the build failed on its own ModalService relay.\n- Replayed alone, granite's own output did not build either: it had accepted actions calling `loadFeed(…)` and `modals.set(…)`, which nothing declares. Fixed in GraniteAgent 4c2e728 and 357985f: an action reaching what the page cannot see is refused, naming the fix (\"FeedService has no work yet: give it `load` first … then call `feed.load(…)`\").\n",
+  "images": [
+   [
+    "c7.png",
+    "Outcome card for c7"
+   ]
+  ]
  }
 ]

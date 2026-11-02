@@ -977,6 +977,7 @@ auto-compaction checks are in each run's entry.
 | [c4](#c4) | 2026-11-02 | off · 64k | 597 (1) | 86 | 2 / 1 / 1 | 13 | 96% · 0 | loopLimit | failed |
 | [c5](#c5) | 2026-11-02 | on · 64k | 1972 (757) | 82 | 20 / 10 / 6 | 3 | 86% · 4 | loopLimit | macOS: succeeded |
 | [c6](#c6) | 2026-11-02 | on · 64k | 1588 (1) | 1584 | 1 / 1 / 0 | 11 | 84% · 4 | loopLimit | failed |
+| [c7](#c7) | 2026-11-02 | on · 64k | 910 (25) | 217 | 5 / 1 / 1 | 9 | 77% · 1 | loopLimit | failed |
 
 ### c1
 
@@ -1792,3 +1793,53 @@ auto-compaction checks are in each run's entry.
 
 ![Outcome card for c6](Docs/Testing/l3-c6-c6.png)
 *Outcome card for c6*
+
+### c7
+
+*2026-11-02 · Qwen3-Coder-Next-REAP-48B-A3B · sketch on · 64k window · Craft 49ccea1 · granite 52e1f23*
+
+**Prompt**:
+
+> Now give Margin its pages with $granite: a Feed that shows FeedService's posts in loom's FeedView and loads them when it appears, a Post page with its thread, and a Profile; then navigation with Feed and Profile as tabs.
+
+**Time**: 910 s in all; 25 s inside agents, 885 s the model and Craft; first agent call at 217 s.
+
+**Calls** (offset s · duration s · result):
+
+- 217 · 22.2 · `granite` ok — granite
+- 249 · 0.3 · `granite` **refused** — granite: granite refused: `PostPage` is MarginKit's type: name the page something else, like `PostDetail`
+- 259 · 0.8 · `granite` ok — granite
+- 269 · 0.9 · `granite` ok — granite
+- 275 · 1.1 · `granite` ok — granite
+- 418 · 0.0 · `write_file` ok — Services/FeedService/Ops/LoadFeed.swift
+- 448 · 0.0 · `edit_file` ok — Services/FeedService/FeedService.swift
+- 564 · 0.0 · `edit_file` ok — Services/PostService/PostService.swift
+- 590 · 0.0 · `edit_file` ok — Services/UserService/UserService.swift
+- 632 · 0.0 · `edit_file` ok — Components/PostDetail/PostDetail.swift
+- 643 · 0.0 · `edit_file` ok — Components/PostDetail/PostDetail+Actions.swift
+- 652 · 0.0 · `edit_file` ok — Components/ProfileDetail/ProfileDetail+Actions.swift
+- 707 · 0.0 · `edit_file` ok — Components/PostDetail/PostDetail+View.swift
+- 748 · 0.0 · `edit_file` ok — Components/ProfileDetail/ProfileDetail+View.swift
+- 763 · 0.0 · `edit_file` ok — Services/UserService/UserService.swift
+
+58 reads, 76 calls in all.
+
+**Who wrote what**:
+
+- `granite`: 27 files — Components/FeedPage/FeedPage+Actions.swift, Components/FeedPage/FeedPage+Center.swift, Components/FeedPage/FeedPage+View.swift, Components/FeedPage/FeedPage.swift, Components/FeedPage/Views/FeedPage.RowView.swift, Components/Home/Home+View.swift, Components/PostDetail/PostDetail+Actions.swift, Components/PostDetail/PostDetail+Center.swift …
+- by hand: 9 files — Components/PostDetail/PostDetail+Actions.swift, Components/PostDetail/PostDetail+View.swift, Components/PostDetail/PostDetail.swift, Components/ProfileDetail/ProfileDetail+Actions.swift, Components/ProfileDetail/ProfileDetail+View.swift, Services/FeedService/FeedService.swift, Services/FeedService/Ops/LoadFeed.swift, Services/PostService/PostService.swift, Services/UserService/UserService.swift
+
+**Window**: peak 77% of 64k; compactions: atAgentCall 39k→26k; checks: room before the agents pass · compaction works — · the breath pass · no thrash **fail**; 9 re-reads after the first compaction
+
+**Stopped**: loopLimit: out of tool rounds (50)
+
+**Build**: failed
+- `PostDetail.swift:9:24: error: cannot find type 'ModalService' in scope`
+- `FeedPage+Actions.swift:8:19: error: cannot find 'loadFeed' in scope (granite's output, replayed)`
+
+**Notes**:
+- granite was called first (217 s) and made the Feed, Post and Profile pages and the navigation; its one refusal (a page named like MarginKit's PostPage) was corrected at once. Then the model hand-edited services and pages, and the build failed on its own ModalService relay.
+- Replayed alone, granite's own output did not build either: it had accepted actions calling `loadFeed(…)` and `modals.set(…)`, which nothing declares. Fixed in GraniteAgent 4c2e728 and 357985f: an action reaching what the page cannot see is refused, naming the fix ("FeedService has no work yet: give it `load` first … then call `feed.load(…)`").
+
+![Outcome card for c7](Docs/Testing/l3-c7-c7.png)
+*Outcome card for c7*
