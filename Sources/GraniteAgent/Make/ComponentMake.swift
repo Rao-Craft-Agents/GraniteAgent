@@ -330,8 +330,16 @@ struct ComponentMake {
                     let hit = entries.first { $0 == name } ?? entries.first { name.lowercased().hasPrefix($0.lowercased()) }
                     return hit.map { "`\(relay.name).\($0)(…)`" }
                 }
+                // A relay whose service has no work yet: say to give it the work first, named after the call.
+                let idle = relays.first { relay in (index.services[relay.type]?.entries ?? []).allSatisfy { ["set", "binding"].contains($0) } }
+                let work = name.range(of: #"^[a-z]+"#, options: .regularExpression).map { String(name[$0]) } ?? name
+                let fallback = idle.map { relay -> String in
+                    let base = relay.type.hasSuffix("Service") ? String(relay.type.dropLast("Service".count)) : relay.type
+                    return "\(relay.type) has no work yet: give it `\(work)` first (`make: service`, `type: \(base)`, "
+                        + "`events: [\"\(work)(…) -> … = …\"]`), then call `\(relay.name).\(work)(…)`"
+                } ?? "its work is a relay's (`relayName.work(…)`) or another action"
                 problems.append("`\(name)(…)` is not something the page can call: "
-                                + (owners.isEmpty ? "its work is a relay's (`relayName.work(…)`) or another action" : "call " + owners.joined(separator: " or ")))
+                                + (owners.isEmpty ? fallback : "call " + owners.joined(separator: " or ")))
             } else {
                 let services = index.services.keys.sorted()
                 let match = services.first { $0.lowercased().hasPrefix(name.lowercased().hasSuffix("s") ? String(name.dropLast()).lowercased() : name.lowercased()) }
