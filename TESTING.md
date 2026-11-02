@@ -731,3 +731,27 @@ Make Hearth's first pages with $granite: a Feed page that shows FeedService's po
 **Notes**:
 - Craft's sketch copied the guide's "make them in order (project, services, pages, navigation, modals)" into its plan, with the guide's example name ("create the Granite project named Recipes"); the model called `project`, `link` and FeedService again before any page.
 - Fixed in the next release: the guide says a turn makes only what its request asks for, and never `project` or `link` in an app granite made. The same prompt was run again (entry 7).
+
+### 7. The same prompt, with the guide that makes only what is asked (e0f408f)
+
+*2026-11-01 · Qwen3-Coder-Next-REAP-48B-A3B-mlx-4bit · 895 s*
+
+**The prompt**, verbatim:
+
+```text
+Make Hearth's first pages with $granite: a Feed page that shows FeedService's posts with loom's FeedView, refreshes, loads more as I scroll, and votes on and saves a post; and a Post page that shows one post with its comments from ThreadService using loom's PostPageView.
+```
+
+**What the model changed itself**: `Shared/Views/Social/Conformances/Comment+Comment.swift`, `Shared/Home.swift`
+
+**Craft's checks**: `xcodebuild -scheme Hearth-macOS -destination platform=macOS build` failed
+
+**Verified by hand**:
+- The macOS scheme does not build: two files named Home produce the same strings.
+
+![The turn: no call to granite, eight files by hand, a build that fails](Docs/Testing/7-8b-pages.png)
+*The turn: no call to granite, eight files by hand, a build that fails*
+
+**Notes**:
+- The model never called granite: the guide did not say how a page shows a view the app already has (loom's FeedView), and the model wrote the pages itself. Craft's hold for a required agent did not act, since its stop on repeated calls is not a finished reply.
+- Fixed in the next release: the guide says such a page is `layout: blank`, its view and how to fill it named in `notes`. The next prompt asks for one page (entry 8).
