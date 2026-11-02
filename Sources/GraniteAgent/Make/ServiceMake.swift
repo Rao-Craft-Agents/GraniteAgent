@@ -115,6 +115,17 @@ struct ServiceMake {
             problems.append("`\(event.verb)` calls `\(root)`, which the project does not declare: make the app's API client first "
                             + "(`$network`, with `$models` for its types and `$mocks` for data before a server exists), then call it by its type")
         }
+        // `MarginClient.posts(…)` on the type, when `posts` is only ever an instance's (Margin, 2026-11-01).
+        for event in events {
+            guard let expression = event.expression?.trimmingCharacters(in: .whitespaces),
+                  let match = expression.range(of: #"^([A-Z]\w*)\.([a-z]\w*)\("#, options: .regularExpression) else { continue }
+            let head = expression[match].dropLast()
+            let parts = head.split(separator: ".").map(String.init)
+            guard parts.count == 2, index.declared.contains(parts[0]), index.instances.contains(parts[1]), !index.statics.contains(parts[1]) else { continue }
+            let shared = index.shared.contains(parts[0])
+            problems.append("`\(event.verb)` calls `\(parts[0]).\(parts[1])(…)` on the type, and `\(parts[1])` is an instance's: "
+                            + (shared ? "call it on the shared one (`\(parts[0]).current.\(parts[1])(…)`)" : "call it on an instance (`\(parts[0])().\(parts[1])(…)`, or the one the app keeps)"))
+        }
         let needsBodies = events.filter { $0.expression == nil }
         if !needsBodies.isEmpty, model == nil {
             problems.append("\(needsBodies.map(\.verb).joined(separator: ", ")) \(needsBodies.count == 1 ? "has" : "have") no `= expression`, and this host has no model to write the work: give the call that does it")

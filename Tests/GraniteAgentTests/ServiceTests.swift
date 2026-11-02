@@ -222,6 +222,32 @@ final class ServiceTests: XCTestCase {
         }
     }
 
+    /// An instance's function called on its type is refused, naming the shared instance when the app has one (Margin).
+    func testAnInstanceFunctionCalledOnItsTypeIsRefused() async throws {
+        let folder = try await app()
+        try """
+        public struct ShelfClient {
+            public init() {}
+            public func shelf(page: Int) async throws -> [Recipe] { [] }
+        }
+
+        extension ShelfClient {
+            public static var current = ShelfClient()
+        }
+        """.write(to: folder.appendingPathComponent("Shared/ShelfClient.swift"), atomically: true, encoding: .utf8)
+        let input = GraniteAppAgent.Input(make: .service, type: "Shelf", state: ["recipes [Recipe] = []"],
+                                          events: ["load(page Int) -> recipes = ShelfClient.shelf(page: page)"])
+        do {
+            try await Fixture.call(input, in: folder)
+            XCTFail("the call is refused")
+        } catch {
+            XCTAssertTrue("\(error)".contains("calls `ShelfClient.shelf(…)` on the type, and `shelf` is an instance's: call it on the shared one (`ShelfClient.current.shelf(…)`)"), "\(error)")
+        }
+        var fixed = input
+        fixed.events = ["load(page Int) -> recipes = ShelfClient.current.shelf(page: page)"]
+        try await Fixture.call(fixed, in: folder)
+    }
+
     func testARelayThatWouldLoopIsRefused() async throws {
         let folder = try await app()
         try await Fixture.call(GraniteAppAgent.Input(make: .service, type: "Index", state: ["count Int = 0"],

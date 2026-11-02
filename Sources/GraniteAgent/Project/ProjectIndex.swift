@@ -47,6 +47,12 @@ struct ProjectIndex {
     var modules: [String: String] = [:]
     /// What each function answers, by its name, as declared anywhere: a client's `posts(page:)` answers `PostPage`.
     var returns: [String: Set<String>] = [:]
+    /// Functions declared `static` or `class` somewhere, by name; a function never declared so is an instance's.
+    var statics: Set<String> = []
+    /// Functions declared without `static`, by name.
+    var instances: Set<String> = []
+    /// Types with a shared instance (`static var current: HearthClient`, `static let shared`), by type.
+    var shared: Set<String> = []
     /// Each type's shape as written: its declaration, its initializers, its cases and its stored fields, one line
     /// each. A page's body is asked for with the shapes of the views it shows (`FeedView`, `SocialActions`).
     var shapes: [String: [String]] = [:]
@@ -116,7 +122,16 @@ struct ProjectIndex {
             if types[name] == nil || types[name]?.fields.isEmpty == true { types[name] = info }
         }
         for (name, type) in Self.functionReturns(in: text) { returns[name, default: []].insert(type) }
+        if let pattern = try? NSRegularExpression(pattern: #"(?m)^[ \t]*(?:@\w+[ \t]+)*(?:(?:public|private|fileprivate|internal|open|nonisolated|final|override|mutating)[ \t]+)*((?:static|class)[ \t]+)?func[ \t]+([A-Za-z_]\w*)"#) {
+            let source = text as NSString
+            for match in pattern.matches(in: text, range: NSRange(location: 0, length: source.length)) {
+                let name = source.substring(with: match.range(at: 2))
+                if match.range(at: 1).location != NSNotFound { statics.insert(name) } else { instances.insert(name) }
+            }
+        }
         for match in text.matches(#"static (?:let|var) preview: ([A-Z]\w*)"#) { previews.insert(match) }
+        for match in text.matches(#"static (?:var|let) (?:current|shared)\s*:\s*([A-Z]\w*)"#) { shared.insert(match) }
+        for match in text.matches(#"static (?:var|let) (?:current|shared)\s*=\s*([A-Z]\w*)\("#) { shared.insert(match) }
         if text.contains("final class AppRoot") { appRoot = url }
         for root in text.matches(#"(?:public )?final class ([A-Z]\w*Root)\b"#) where root != "AppRoot" { kitRoots[root] = url }
         if text.contains("final class RelayClock") { hasRelayClock = true }
