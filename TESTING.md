@@ -313,3 +313,115 @@ Give Hearth its services with $granite, each working through HearthKit's HearthC
 - No project or link calls this time, and no relay to the client: four calls, one a service.
 - The model picked other calls: `postsPages(from:)` (a `Pages<Post>` sequence) into `[Post]`, `signIn` (a `Session`) into `User?`, and a `signOut()` HearthKit does not have. It also left out the append, vote and save work the prompt asked for. Granite wrote what it was given; the model's nine edits did not fix the build before its context filled.
 - Fixed in the next release: a call whose answer the index knows and which cannot fill the field is refused, naming the calls whose answer can (`posts(…)` answers `PostPage`, read for its `.posts`). The same prompt was run a third time (entry 4).
+
+### 4. The same prompt, with calls checked against what they answer (fdda5b5)
+
+*2026-11-01 · Qwen3-Coder-Next-REAP-48B-A3B-mlx-4bit · 1387 s*
+
+**The prompt**, verbatim:
+
+```text
+Give Hearth its services with $granite, each working through HearthKit's HearthClient.current: a FeedService that keeps the feed's posts and its sort (hot, new or top), loads the first page, appends the next one, and votes on and saves a post; a ThreadService that loads a post's comments a page at a time; a CommunitiesService that keeps the communities and loads them; and a SessionService that signs in with a username and password, keeps the signed-in person, and signs out.
+```
+
+**The call the model wrote** to `granite`:
+
+```json
+{
+  "events": [
+    "loadFirstPage = try await client.loadFeed(page: 1, sort: sort) \"loads the first page of posts\"",
+    "appendNextPage +> posts = try await client.loadFeed(page: page + 1, sort: sort) \"appends the next page of posts\"",
+    "vote(post Post, upvote Bool) = try await client.vote(post.id, upvote: upvote) \"votes on a post\"",
+    "savePost(post Post) = try await client.savePost(post.id) \"saves a post\""
+  ],
+  "into": "Services/FeedService",
+  "make": "service",
+  "persist": true,
+  "state": [
+    "posts [Post] = []",
+    "sort: Sort = .hot",
+    "page: Int = 1",
+    "loading: Bool = false",
+    "error: String?"
+  ],
+  "type": "Feed"
+}
+```
+
+**The call the model wrote** to `granite`:
+
+```json
+{
+  "events": [
+    "loadComments(postId String, page Int) -> comments = try await client.loadComments(postId: postId, page: page) \"loads a page of comments for a post\"",
+    "appendNextPage(postId String, page Int) +> comments = try await client.loadComments(postId: postId, page: page + 1) \"appends the next page of comments\""
+  ],
+  "into": "Services/ThreadService",
+  "make": "service",
+  "persist": false,
+  "state": [
+    "comments [Comment] = []",
+    "postId String = \"\"",
+    "page: Int = 1",
+    "loading: Bool = false",
+    "error: String?"
+  ],
+  "type": "Thread"
+}
+```
+
+**The call the model wrote** to `granite`:
+
+```json
+{
+  "events": [
+    "loadCommunities = try await client.loadCommunities(page: 1) \"loads communities\"",
+    "appendNextPage +> communities = try await client.loadCommunities(page: page + 1) \"appends the next page of communities\""
+  ],
+  "into": "Services/CommunitiesService",
+  "make": "service",
+  "persist": false,
+  "state": [
+    "communities [Community] = []",
+    "page: Int = 1",
+    "loading: Bool = false",
+    "error: String?"
+  ],
+  "type": "Communities"
+}
+```
+
+**The call the model wrote** to `granite`:
+
+```json
+{
+  "events": [
+    "signIn(username String, password String) = try await client.signIn(user: username, password: password) \"signs in with username and password\"",
+    "signOut = try await client.signOut() \"signs out\""
+  ],
+  "into": "Services/SessionService",
+  "make": "service",
+  "persist": true,
+  "state": [
+    "currentUser User?",
+    "isSignedIn: Bool = false",
+    "loading: Bool = false",
+    "error: String?"
+  ],
+  "type": "Session"
+}
+```
+
+**What `granite` wrote** (34 files): `Services/FeedService/FeedService.swift`, `Services/FeedService/FeedService+Center.swift`, `Services/FeedService/Reducers/FeedService.Set.swift`, `Services/FeedService/Reducers/FeedService.LoadFirstPage.swift`, `Services/FeedService/Reducers/FeedService.AppendNextPage.swift`, `Services/FeedService/Reducers/FeedService.Vote.swift`, `Services/FeedService/Reducers/FeedService.SavePost.swift`, `Services/FeedService/Ops/FeedOps.swift`, `Tests/FeedOpsTests.swift`, `Shared/Utility/AppRoot.swift`, `Services/ThreadService/ThreadService.swift`, `Services/ThreadService/ThreadService+Center.swift`, `Services/ThreadService/Reducers/ThreadService.Set.swift`, `Services/ThreadService/Reducers/ThreadService.LoadComments.swift`, `Services/ThreadService/Reducers/ThreadService.AppendNextPage.swift`, `Services/ThreadService/Ops/ThreadOps.swift`, `Tests/ThreadOpsTests.swift`, `Shared/Utility/AppRoot.swift`, `Services/CommunitiesService/CommunitiesService.swift`, `Services/CommunitiesService/CommunitiesService+Center.swift`, `Services/CommunitiesService/Reducers/CommunitiesService.Set.swift`, `Services/CommunitiesService/Reducers/CommunitiesService.LoadCommunities.swift`, `Services/CommunitiesService/Reducers/CommunitiesService.AppendNextPage.swift`, `Services/CommunitiesService/Ops/CommunitiesOps.swift`, `Tests/CommunitiesOpsTests.swift`, `Shared/Utility/AppRoot.swift`, `Services/SessionService/SessionService.swift`, `Services/SessionService/SessionService+Center.swift`, `Services/SessionService/Reducers/SessionService.Set.swift`, `Services/SessionService/Reducers/SessionService.SignIn.swift` …
+
+**What the model changed itself**: `Packages/HearthKit/Sources/HearthKit/HearthClient.swift`, `Services/FeedService/FeedService.swift`, `Services/ThreadService/ThreadService.swift`, `Services/CommunitiesService/CommunitiesService.swift`, `Services/SessionService/SessionService.swift`, `Services/FeedService/FeedService+Center.swift`, `Services/FeedService/Reducers/FeedService.LoadFirstPage.swift`, `Services/FeedService/Reducers/FeedService.AppendNextPage.swift`, `Services/FeedService/Reducers/FeedService.Vote.swift`, `Services/FeedService/Reducers/FeedService.SavePost.swift`, `Services/ThreadService/ThreadService+Center.swift`, `Services/ThreadService/Reducers/ThreadService.LoadComments.swift`, `Services/ThreadService/Reducers/ThreadService.AppendNextPage.swift`, `Services/CommunitiesService/CommunitiesService+Center.swift`, `Services/CommunitiesService/Reducers/CommunitiesService.LoadCommunities.swift`, `Services/CommunitiesService/Reducers/CommunitiesService.AppendNextPage.swift`, `Services/SessionService/SessionService+Center.swift`, `Services/SessionService/Reducers/SessionService.SignIn.swift`, `Services/SessionService/Reducers/SessionService.SignOut.swift`
+
+**Verified by hand**:
+- The macOS scheme does not build: `invalid redeclaration of 'current'` in HearthKit, after the model's own edits.
+
+![The turn: four calls written as given, then 26 edits by hand and a build that fails](Docs/Testing/4-6c-services.png)
+*The turn: four calls written as given, then 26 edits by hand and a build that fails*
+
+**Notes**:
+- The Feed call's events started from `client` (`client.loadFeed(page: page + 1, sort: sort)`): a name no relay or parameter holds, a function HearthKit does not have, and `page` and `sort` read bare. The answer check could not help: the index has no `loadFeed`.
+- Fixed in the next release: a call that starts from a name its work cannot see is refused, saying what the work sees (its parameters, its relays, `state.sort`) and how a client is reached (by its type). The same prompt was run a fourth time (entry 5).

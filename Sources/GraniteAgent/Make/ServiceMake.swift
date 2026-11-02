@@ -90,6 +90,21 @@ struct ServiceMake {
                 }
             } catch { problems.append("\(error)") }
         }
+        // A call sees the event's parameters, its relays and the state; a name it cannot see does not build.
+        for event in events {
+            guard let expression = event.expression else { continue }
+            let seen = Set(event.params.map(\.name) + relays.map(\.name) + ["state"])
+            let unseen = Self.roots(of: expression).filter { !seen.contains($0) }
+            guard !unseen.isEmpty else { continue }
+            var ways = ["its parameters (" + (event.params.isEmpty ? "none" : event.params.map { "`\($0.name)`" }.joined(separator: ", ")) + ")"]
+            if !relays.isEmpty { ways.append("its relays (" + relays.map { "`\($0.name)`" }.joined(separator: ", ") + ")") }
+            let stateNames = unseen.filter { name in fields.contains { $0.name == name } }
+            ways.append(stateNames.isEmpty ? "the state as `state.<field>`" : "the state as " + stateNames.map { "`state.\($0)`" }.joined(separator: ", "))
+            let clients = index.declared.filter { $0.hasSuffix("Client") }.sorted()
+            let reach = clients.isEmpty ? "" : "; a client is reached by its type (`\(clients[0])…`)"
+            problems.append("`\(event.verb)` uses " + unseen.map { "`\($0)`" }.joined(separator: ", ")
+                            + ", which its work cannot see: it sees " + ways.joined(separator: ", ") + reach)
+        }
         let needsBodies = events.filter { $0.expression == nil }
         if !needsBodies.isEmpty, model == nil {
             problems.append("\(needsBodies.map(\.verb).joined(separator: ", ")) \(needsBodies.count == 1 ? "has" : "have") no `= expression`, and this host has no model to write the work: give the call that does it")
@@ -226,6 +241,41 @@ struct ServiceMake {
         let offer = fitting.isEmpty ? "write the work in `notes` instead, or hold the answer in a field of its type"
             : "call one that does: " + fitting.prefix(3).joined(separator: "; ")
         return "`\(method)(…)` answers `\(answer)`, and `\(field.name)` holds `\(wanted)`: \(offer)"
+    }
+
+    /// The names a call starts from: its receiver (`client` in `client.load(page)`) and each argument's first name
+    /// (`page` in `page + 1`), leaving out labels, members, literals, types and Swift's own words.
+    static func roots(of expression: String) -> [String] {
+        let keywords: Set<String> = ["try", "await", "true", "false", "nil", "self", "as", "is", "in", "let", "var", "some", "any"]
+        let characters = Array(expression)
+        var names: [String] = [], position = 0, inString = false
+        func previous(_ index: Int) -> Character? {
+            var cursor = index - 1
+            while cursor >= 0, characters[cursor] == " " { cursor -= 1 }
+            return cursor >= 0 ? characters[cursor] : nil
+        }
+        func next(_ index: Int) -> Character? {
+            var cursor = index
+            while cursor < characters.count, characters[cursor] == " " { cursor += 1 }
+            return cursor < characters.count ? characters[cursor] : nil
+        }
+        while position < characters.count {
+            let character = characters[position]
+            if character == "\"" { inString.toggle(); position += 1; continue }
+            guard !inString, character.isLetter || character == "_" else { position += 1; continue }
+            var end = position
+            while end < characters.count, characters[end].isLetter || characters[end].isNumber || characters[end] == "_" { end += 1 }
+            let name = String(characters[position..<end])
+            let before = previous(position)
+            let starts = before == nil || before == "(" || before == "," || before == ":" || before == "[" || before == "!"
+                || before == "+" || before == "-" || before == "*" || before == "/" || before == "=" || before == "?"
+            // A word that starts a value, is not a label (`page:`), a member (`.posts`), a type or Swift's own.
+            if starts, next(end) != ":", before != "$", name.first?.isLowercase == true, !keywords.contains(name), !names.contains(name) {
+                if !(before == "(" && position >= 1 && characters[position - 1] == "\\") { names.append(name) }
+            }
+            position = end
+        }
+        return names
     }
 
     /// The function a call ends in: `posts` in `HearthClient.current.posts(page: page)`.

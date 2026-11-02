@@ -158,6 +158,26 @@ final class ServiceTests: XCTestCase {
                      "a call that already answers the field's type is kept")
     }
 
+    /// A call that starts from a name its work cannot see (a `client` no relay or parameter holds, a state field
+    /// written bare) is refused with what the work sees (Hearth, 2026-11-01).
+    func testACallUsingNamesItsWorkCannotSeeIsRefused() async throws {
+        let folder = try await app()
+        try "public struct RecipeClient { public static var current = RecipeClient() }\n".write(to: folder.appendingPathComponent("Shared/RecipeClient.swift"), atomically: true, encoding: .utf8)
+        let input = GraniteAppAgent.Input(make: .service, type: "Recipes", state: ["recipes [Recipe] = []", "sort String = \"new\""],
+                                          events: ["more +> recipes = client.page(page: page + 1, sort: sort)",
+                                                   "favor(recipe Recipe) = RecipeClient.current.favor(recipe.id, \"note: \\(recipe.id)\")"])
+        do {
+            try await Fixture.call(input, in: folder)
+            XCTFail("the call is refused")
+        } catch {
+            let text = "\(error)"
+            XCTAssertTrue(text.contains("`more` uses `client`, `page`, `sort`, which its work cannot see"), text)
+            XCTAssertTrue(text.contains("the state as `state.sort`") && text.contains("by its type (`RecipeClient…`)"), text)
+            XCTAssertFalse(text.contains("`favor` uses"), "a parameter, a type, a label and a string are seen: \(text)")
+        }
+        XCTAssertEqual(ServiceMake.roots(of: "HearthClient.current.posts(page: page, sort: state.sort).posts"), ["page", "state"])
+    }
+
     /// A call whose answer cannot fill the field is refused, with the calls whose answer can (Hearth, 2026-11-01).
     func testACallWhoseAnswerCannotFillTheFieldIsRefused() async throws {
         let folder = try await app()
