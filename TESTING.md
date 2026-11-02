@@ -649,3 +649,85 @@ Give Hearth its services with $granite, each working through HearthKit's HearthC
 - Granite refused six calls before writing anything, each with what to change: `sort` read bare (the model wrote `state.sort`), `+>` onto a page that is not a list, and sign-in's `Session` written into `user` three times.
 - The model repeated the sign-in call because the refusal offered `createPost(…)` read for its `.author`. In the next release, only a list is offered out of an envelope, and every such refusal also offers keeping the call without the write.
 - Craft's judicator read "misaligned" twice on the four services; the build and tests passed.
+
+### 6. Hearth's Feed and Post pages over loom's views, first try (the journey's eighth prompt)
+
+*2026-11-01 · Qwen3-Coder-Next-REAP-48B-A3B-mlx-4bit · 529 s*
+
+**The prompt**, verbatim:
+
+```text
+Make Hearth's first pages with $granite: a Feed page that shows FeedService's posts with loom's FeedView, refreshes, loads more as I scroll, and votes on and saves a post; and a Post page that shows one post with its comments from ThreadService using loom's PostPageView.
+```
+
+**The call the model wrote** to `granite`:
+
+```json
+{
+  "bundleId": "com.example.hearth",
+  "make": "project",
+  "name": "Hearth"
+}
+```
+
+**The call the model wrote** to `granite`:
+
+```json
+{
+  "make": "link"
+}
+```
+
+**The call the model wrote** to `granite`:
+
+```json
+{
+  "events": [
+    "load(page Int) -> posts = HearthClient.current.posts(page: page, sort: state.sort) \"loads a page of posts\"",
+    "more(page Int) +> posts = HearthClient.current.posts(page: page, sort: state.sort)",
+    "vote(post Post, upvote Bool) = HearthClient.current.vote(post.id, upvote) \"votes on a post\"",
+    "save(post Post) = HearthClient.current.save(post.id) \"saves a post\""
+  ],
+  "make": "service",
+  "name": "FeedService",
+  "persist": true,
+  "state": [
+    "posts [Post] = []",
+    "sort String = \"hot\"",
+    "selectedPostId String?"
+  ]
+}
+```
+
+**The call the model wrote** to `granite`:
+
+```json
+{
+  "events": [
+    "load(page Int) -> posts = HearthClient.current.posts(page: page, sort: state.sort) \"loads a page of posts\"",
+    "more(page Int) +> posts = HearthClient.current.posts(page: page, sort: state.sort)",
+    "vote(post Post, upvote Bool) = HearthClient.current.vote(post.id, upvote) \"votes on a post\"",
+    "save(post Post) = HearthClient.current.save(post.id) \"saves a post\""
+  ],
+  "make": "service",
+  "persist": true,
+  "state": [
+    "posts [Post] = []",
+    "sort String = \"hot\"",
+    "selectedPostId String?"
+  ],
+  "type": "Feed"
+}
+```
+
+**What the model changed itself**: `Components/FeedPage/FeedPage.swift`, `Components/FeedPage/FeedPage+View.swift`, `Components/PostPage/PostPage.swift`, `Components/PostPage/PostPage+View.swift`, `Components/Home/Home+View.swift`, `Components/FeedPage/FeedPage+Center.swift`, `Components/PostPage/PostPage+Center.swift`
+
+**Verified by hand**:
+- The macOS scheme does not build: the model's hand-written FeedPage is declared twice.
+
+![The turn: three calls that remade what Hearth has, no page made, and a build that fails](Docs/Testing/6-8a-pages.png)
+*The turn: three calls that remade what Hearth has, no page made, and a build that fails*
+
+**Notes**:
+- Craft's sketch copied the guide's "make them in order (project, services, pages, navigation, modals)" into its plan, with the guide's example name ("create the Granite project named Recipes"); the model called `project`, `link` and FeedService again before any page.
+- Fixed in the next release: the guide says a turn makes only what its request asks for, and never `project` or `link` in an app granite made. The same prompt was run again (entry 7).

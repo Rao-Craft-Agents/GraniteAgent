@@ -104,7 +104,7 @@ public struct GraniteAppAgent: GraniteAgentPackage {
         "rounds": "how many answers the host's model may give one body before the call is refused; 3 when left out",
     ]
     public static let guide = #"""
-        Tag granite for an app's architecture on Granite: the project, its services, its pages, how it navigates and its modals. One call makes one thing; make them in order (project, services, pages, navigation, modals). Each call reads the project as it is, so a page binds to a service's real fields; a call it cannot honour is refused with every reason and nothing is written: fix the lines and call again.
+        Tag granite for an app's architecture on Granite: the project, its services, its pages, how it navigates and its modals. One call makes one thing, and a turn makes only what its request asks for: `project` once, when there is no app yet; services before the pages that read them; navigation once the pages exist. An app it made already has its project, root and boot, so never call `project` or `link` there again. Each call reads the project as it is, so a page binds to a service's real fields; a call it cannot honour is refused with every reason and nothing is written: fix the lines and call again.
 
         project: {"make": "project", "name": "Recipes", "bundleId": "com.example.recipes"} writes Recipes.xcodeproj (iOS and macOS apps, unit and UI tests, Granite pinned), the root that boots the app, the environment and settings services, and the Home page. `packages` adds pinned remote packages.
 
