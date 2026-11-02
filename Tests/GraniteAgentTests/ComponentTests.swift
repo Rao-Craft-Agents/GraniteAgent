@@ -178,6 +178,27 @@ final class ComponentTests: XCTestCase {
         }
     }
 
+    /// A blank page whose body the call gives is written as given, with no model; a body that does not parse is refused.
+    func testABlankPageTakesItsBodyFromTheCall() async throws {
+        let folder = try await app()
+        let input = GraniteAppAgent.Input(make: .component, type: "Shelf", relays: ["recipes: RecipesService"], layout: .blank,
+                                          actions: ["refresh = try await recipes.load(page: 1)"],
+                                          body: "List(recipes.state.recipes) { recipe in\n    Text(recipe.title)\n}\n.refreshable { try? await refresh() }")
+        try await Fixture.call(input, in: folder)
+        let view = try read(folder, "Components/Shelf/Shelf+View.swift")
+        XCTAssertTrue(view.contains("List(recipes.state.recipes) { recipe in") && view.contains(".refreshable { try? await refresh() }"), view)
+        var broken = input
+        broken.type = "Pantry"
+        broken.body = "List(recipes.state.recipes) { recipe in"
+        do {
+            try await Fixture.call(broken, in: folder)
+            XCTFail("a body that does not parse is refused")
+        } catch {
+            XCTAssertTrue("\(error)".contains("the page's `body` does not parse"), "\(error)")
+        }
+        XCTAssertFalse(FileManager.default.fileExists(atPath: folder.appendingPathComponent("Components/Pantry").path))
+    }
+
     func testAPageItCannotDrawIsRefusedWithEveryReason() async throws {
         let folder = try await app()
         let input = GraniteAppAgent.Input(make: .component, type: "FeedComponent", relays: ["feed: FeedService"], layout: .threePane,
@@ -195,7 +216,7 @@ final class ComponentTests: XCTestCase {
             try await Fixture.call(GraniteAppAgent.Input(make: .component, type: "Today", layout: .blank), in: folder)
             XCTFail("a blank page needs the model")
         } catch {
-            XCTAssertTrue("\(error)".contains("comes from the host's model"))
+            XCTAssertTrue("\(error)".contains("comes from `body` or the host's model"))
         }
         XCTAssertFalse(FileManager.default.fileExists(atPath: folder.appendingPathComponent("Components/Feed").path))
     }

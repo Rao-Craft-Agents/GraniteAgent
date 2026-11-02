@@ -41,6 +41,9 @@ public struct GraniteAppAgent: GraniteAgentPackage {
         public var actions: [String]?
         /// A page's subviews: `row(post Post) "title, author and score"`.
         public var views: [String]?
+        /// A blank page's body as Swift, written as given (parse-checked) instead of asked of the host's model: the
+        /// view the app already has, filled from the relays and actions.
+        public var body: String?
         /// The app's destinations: `feed: Feed "Feed" house`.
         public var destinations: [String]?
         /// How the app moves between its destinations.
@@ -63,10 +66,10 @@ public struct GraniteAppAgent: GraniteAgentPackage {
         public init(make: GraniteMake, name: String? = nil, bundleId: String? = nil, team: String? = nil, type: String? = nil,
                     into: String? = nil, state: [String]? = nil, events: [String]? = nil, relays: [String]? = nil,
                     layout: GraniteLayout? = nil, shows: [String]? = nil, actions: [String]? = nil, views: [String]? = nil,
-                    destinations: [String]? = nil, style: GraniteStyle? = nil, root: String? = nil, packages: [String]? = nil,
+                    body: String? = nil, destinations: [String]? = nil, style: GraniteStyle? = nil, root: String? = nil, packages: [String]? = nil,
                     imports: [String]? = nil, persist: Bool? = nil, notes: String? = nil, rounds: Int? = nil, directory: String? = nil) {
             self.make = make; self.name = name; self.bundleId = bundleId; self.team = team; self.type = type; self.into = into
-            self.state = state; self.events = events; self.relays = relays; self.layout = layout; self.shows = shows
+            self.state = state; self.events = events; self.relays = relays; self.layout = layout; self.shows = shows; self.body = body
             self.actions = actions; self.views = views; self.destinations = destinations; self.style = style; self.root = root
             self.packages = packages; self.imports = imports; self.persist = persist; self.notes = notes; self.rounds = rounds
             self.directory = directory
@@ -100,6 +103,7 @@ public struct GraniteAppAgent: GraniteAgentPackage {
         "packages": "remote packages the app links, pinned: `https://github.com/kean/Nuke@<40-hex revision> Nuke NukeUI`",
         "imports": "modules the files import beside Foundation, SwiftUI and Granite; a local package's are found on their own",
         "persist": "whether a service's state is kept between launches",
+        "body": "a blank page's body as Swift, written as given: the view the app has, filled from the page's relays and actions (`FeedView(posts: feed.state.posts, actions: …)`)",
         "notes": "what the work or the page is for, in a sentence: what the host's model writes bodies from",
         "rounds": "how many answers the host's model may give one body before the call is refused; 3 when left out",
     ]
@@ -110,7 +114,7 @@ public struct GraniteAppAgent: GraniteAgentPackage {
 
         service: {"make": "service", "type": "Recipes", "state": ["recipes [Recipe] = []", "favorite String?"], "events": ["load(page Int) -> recipes = RecipeAPI.page(page) \"loads a page\"", "more(page Int) +> recipes = RecipeAPI.page(page)", "favor(recipe Recipe) = RecipeAPI.favor(recipe.id)"], "persist": true} writes RecipesService. A state line is the models syntax (`name Type = default`, `?` optional). An event is `verb(param Type) -> field = call`: the call is async and throwing (the agent adds try await), `-> field` replaces the field with its result, `+> field` appends a page to a list, and with no `= call` the host's model writes the work from `notes`. `relays` are services the work calls (`catalog: CatalogService`), never one that calls back. A page then calls `try await recipes.load(page: 1)` (it answers the result), writes a field with `recipes.set(.favorite(id))` and binds one with `recipes.binding(\.favorite) { .favorite($0) }`.
 
-        component: {"make": "component", "type": "RecipeList", "layout": "list", "relays": ["recipes: RecipesService"], "shows": ["items = recipes.state.recipes", "title = \"Recipes\"", "empty = \"No recipes yet\""], "actions": ["refresh = try await recipes.load(page: 1)", "more = try await recipes.more(page: 2)", "open(recipe Recipe) = recipes.set(.favorite(recipe.id))", "favor(recipe Recipe) \"Favorite\" star = try await recipes.favor(recipe: recipe)"], "views": ["row(recipe Recipe, favor () -> Void) \"photo, title and minutes, with a heart\""]} writes the page. Layouts: list, grid and search show `items` (search adds `query`); detail shows `item`; threePane shows `items` and `selection`, and a `sidebar`; form, settings and compose show rows `"Section/Label" = recipes.state.field` or `= state.field`, each a control by its type; tabs shows `"Title" = SomeView()` a tab; blank is written by the host's model: a page that shows a view the app already has (a kit's `FeedView(…)`) is `layout: blank` with its relays and actions, and the view and how to fill it named in `notes`. Actions named refresh, more, open, submit and search do what they say; one that takes an item sits in its row's menu; the others are toolbar buttons (`name "Words" sf.symbol = statements`). A view's closure is filled by the action of its name. The page's own state is `state` lines (`query String = ""`); `let recipe Recipe` is an input it is made with.
+        component: {"make": "component", "type": "RecipeList", "layout": "list", "relays": ["recipes: RecipesService"], "shows": ["items = recipes.state.recipes", "title = \"Recipes\"", "empty = \"No recipes yet\""], "actions": ["refresh = try await recipes.load(page: 1)", "more = try await recipes.more(page: 2)", "open(recipe Recipe) = recipes.set(.favorite(recipe.id))", "favor(recipe Recipe) \"Favorite\" star = try await recipes.favor(recipe: recipe)"], "views": ["row(recipe Recipe, favor () -> Void) \"photo, title and minutes, with a heart\""]} writes the page. Layouts: list, grid and search show `items` (search adds `query`); detail shows `item`; threePane shows `items` and `selection`, and a `sidebar`; form, settings and compose show rows `"Section/Label" = recipes.state.field` or `= state.field`, each a control by its type; tabs shows `"Title" = SomeView()` a tab; blank is written by the host's model: a page that shows a view the app already has (a kit's `FeedView(…)`) is `layout: blank` with its relays and actions, and either the body itself in `body` (written as given) or the view and how to fill it named in `notes`. Actions named refresh, more, open, submit and search do what they say; one that takes an item sits in its row's menu; the others are toolbar buttons (`name "Words" sf.symbol = statements`). A view's closure is filled by the action of its name. The page's own state is `state` lines (`query String = ""`); `let recipe Recipe` is an input it is made with.
 
         navigation: {"make": "navigation", "destinations": ["recipes: RecipeList \"Recipes\" book", "search: RecipeSearch \"Search\" magnifyingglass", "settings: Settings \"Settings\" gearshape"], "style": "adaptive"} writes the destinations, tabs on iPhone and a sidebar on iPad and the Mac, a layout service, routes and Device, and shows them once the app is ready. The pages must exist first.
 

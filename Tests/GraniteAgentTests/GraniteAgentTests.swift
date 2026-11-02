@@ -29,6 +29,7 @@ final class GraniteAgentTests: XCTestCase {
             .init(name: "shows", schema: lines, required: false),
             .init(name: "actions", schema: lines, required: false),
             .init(name: "views", schema: lines, required: false),
+            .init(name: "body", schema: .string, required: false),
             .init(name: "destinations", schema: lines, required: false),
             .init(name: "style", schema: .choice(["adaptive", "tabs", "sidebar", "split"]), required: false),
             .init(name: "root", schema: .string, required: false),

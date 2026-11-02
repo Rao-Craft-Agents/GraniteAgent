@@ -114,7 +114,7 @@ struct ComponentMake {
         case .tabs:
             if shows.filter({ $0.role == nil }).count < 2 { problems.append("a tabs page switches between views: add two or more `\"Title\" = SomeView()` lines to shows") }
         case .blank:
-            if model == nil { problems.append("a blank page's body comes from the host's model, and this host has none: name a layout (list, grid, detail, form, settings, search, compose, tabs, threePane)") }
+            if model == nil, input.body == nil { problems.append("a blank page's body comes from `body` or the host's model, and this host has none: give `body`, or name a layout (list, grid, detail, form, settings, search, compose, tabs, threePane)") }
         }
         if layout == .search, !has("query"), !fields.contains(where: { $0.name == "query" }) {
             fields.append(Field(name: "query", type: .named("String"), defaultValue: "\"\"", key: nil, doc: "what the search field holds"))
@@ -148,7 +148,15 @@ struct ComponentMake {
                 notes.append("\(spec.viewType(view)) is made from its values' fields: this host has no model to write the body its line describes")
             }
         }
-        if layout == .blank, let asker {
+        if layout == .blank, let given = input.body?.trimmingCharacters(in: .whitespacesAndNewlines), !given.isEmpty {
+            // The body as the call wrote it: parsed in its file, never asked of the model.
+            var probe = spec
+            probe.bodies["content"] = given
+            if let failure = BodyAsk.parse(ComponentLayouts(emitter: ComponentEmitter(spec: probe, inputs: inputs)).view()) {
+                throw GraniteError.refused(["the page's `body` does not parse: \(failure)"])
+            }
+            spec.bodies["content"] = given
+        } else if layout == .blank, let asker {
             note("asking for \(type)'s page")
             let (body, rounds)
  = try await asker.ask(type, system: BodyPrompts.page, user: Self.pagePrompt(spec, notes: input.notes),
