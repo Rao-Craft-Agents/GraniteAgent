@@ -331,5 +331,30 @@
     "iPhone, dark"
    ]
   ]
+ },
+ {
+  "run": "c6",
+  "date": "2026-11-02",
+  "model": "Qwen3-Coder-Next-REAP-48B-A3B",
+  "sketch": "on",
+  "window": "64k",
+  "wall": 1588,
+  "first": 1584,
+  "agents": "1 / 1 / 0",
+  "hand": 11,
+  "in_agents": 1,
+  "model_time": 1587,
+  "compactions": "inTurn 60k→44k, inTurn 56k→36k, inTurn 56k→44k, inTurn 56k→43k",
+  "peak": "84%",
+  "stop": "loopLimit",
+  "build": "failed",
+  "checks": "room before the agents pass · compaction works pass · the breath — · no thrash pass",
+  "entry": "### c6\n\n*2026-11-02 · Qwen3-Coder-Next-REAP-48B-A3B · sketch on · 64k window · Craft 3d4bbe1 · granite d93ad1a*\n\n**Prompt**:\n\n> Now give Margin its pages with $granite: a Feed that shows FeedService's posts in loom's FeedView and loads them when it appears, a Post page with its thread, and a Profile; then navigation with Feed and Profile as tabs.\n\n**Time**: 1588 s in all; 1 s inside agents, 1587 s the model and Craft; first agent call at 1584 s.\n\n**Calls** (offset s · duration s · result):\n\n- 337 · 0.0 · `write_file` ok — Components/Feed/Feed.swift\n- 343 · 0.0 · `write_file` ok — Components/Feed/Feed+Center.swift\n- 363 · 0.0 · `write_file` ok — Components/Feed/Feed+View.swift\n- 388 · 0.0 · `write_file` ok — Components/Post/Post.swift\n- 393 · 0.0 · `write_file` ok — Components/Post/Post+Center.swift\n- 414 · 0.0 · `write_file` ok — Components/Post/Post+View.swift\n- 436 · 0.0 · `write_file` ok — Components/Profile/Profile.swift\n- 441 · 0.0 · `write_file` ok — Components/Profile/Profile+Center.swift\n- 459 · 0.0 · `write_file` ok — Components/Profile/Profile+View.swift\n- 478 · 0.0 · `edit_file` ok — Components/Home/Home.swift\n- 490 · 0.0 · `write_file` ok — Components/Feed/Feed.swift\n- 509 · 0.0 · `write_file` ok — Components/Feed/Feed+View.swift\n- 520 · 0.0 · `write_file` ok — Components/Home/Home.swift\n- 539 · 0.0 · `write_file` ok — Components/Feed/Feed.swift\n- 545 · 0.0 · `write_file` ok — Components/Feed/Feed+Center.swift\n- 556 · 0.0 · `write_file` ok — Components/Home/Home.swift\n- 573 · 0.0 · `write_file` ok — Components/Home/Home+View.swift\n- 600 · 0.0 · `write_file` ok — Components/Feed/Feed.swift\n- 842 · 0.0 · `write_file` ok — Components/Feed/Feed+Center.swift\n- 858 · 0.0 · `write_file` ok — Components/Feed/Feed.swift\n- 977 · 0.0 · `write_file` ok — Components/Feed/Feed+Center.swift\n- 992 · 0.0 · `write_file` ok — Components/Feed/Feed.swift\n- 1065 · 0.0 · `write_file` ok — Components/Feed/Feed+Center.swift\n- 1078 · 0.0 · `write_file` ok — Components/Feed/Feed+Center.swift\n- 1093 · 0.0 · `write_file` ok — Components/Feed/Feed.swift\n- 1274 · 0.0 · `write_file` ok — Components/Feed/Feed+Center.swift\n- 1290 · 0.0 · `write_file` ok — Components/Feed/Feed.swift\n- 1584 · 0.7 · `granite` **refused** — granite: granite refused: `refresh`: FeedService has no `load`\n\n32 reads, 70 calls in all.\n\n**Who wrote what**:\n\n- by hand: 11 files — Components/Feed/Feed+Center.swift, Components/Feed/Feed+View.swift, Components/Feed/Feed.swift, Components/Home/Home+View.swift, Components/Home/Home.swift, Components/Post/Post+Center.swift, Components/Post/Post+View.swift, Components/Post/Post.swift, Components/Profile/Profile+Center.swift, Components/Profile/Profile+View.swift\n\n**Window**: peak 84% of 64k; compactions: inTurn 60k→44k, inTurn 56k→36k, inTurn 56k→44k, inTurn 56k→43k; checks: room before the agents pass · compaction works pass · the breath — · no thrash pass; 1 re-reads after the first compaction\n\n**Stopped**: loopLimit: out of tool rounds (50); one last call offered to `granite`\n\n**Build**: failed\n- `error: value of type 'Post' has no member 'author'`\n- `error: 'Meta' is not a member type of generic struct 'Swift.Set'`\n- `error: '@escaping' only applies to function types`\n\n**Notes**:\n- c4's prompt again on the same state (c3g + loom replay). The plan the model read began with \"call `granite`\", and it wrote 26 page files by hand instead; granite was called only when the spent budget offered its last call (B4 working), and refused: FeedService had no work. Fixed in Craft 49ccea1 (a hand edit before a required agent answers is told once) and GraniteAgent 52e1f23 (the refusal says how to give the service its work).\n- Room was made four times inside the turn (60k→44k, 56k→37k, 56k→44k, 57k→43k); the window never filled.\n",
+  "images": [
+   [
+    "c6.png",
+    "Outcome card for c6"
+   ]
+  ]
  }
 ]
