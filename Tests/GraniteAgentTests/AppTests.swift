@@ -76,6 +76,34 @@ final class AppTests: XCTestCase {
         XCTAssertFalse(FileManager.default.fileExists(atPath: folder.appendingPathComponent("Shared/Utility/AppDestination.swift").path))
     }
 
+    /// A destination is a page: a kit's view that needs values (loom's FeedView) is refused, pointing to a page that
+    /// shows it; a view made with no arguments is taken (Margin, 2026-11-01).
+    func testNavigationRefusesAViewThatNeedsValues() async throws {
+        let folder = try await app()
+        try """
+        import SwiftUI
+
+        struct DishFeed<Item: Identifiable>: View {
+            let items: [Item]
+            var body: some View { Text("") }
+        }
+
+        struct About: View {
+            var body: some View { Text("About") }
+        }
+        """.write(to: folder.appendingPathComponent("Shared/Kit.swift"), atomically: true, encoding: .utf8)
+        var input = Fixture.navigation
+        input.destinations = [#"recipes: RecipeList "Recipes" book"#, #"dishes: DishFeed "Dishes" fork.knife"#, #"about: About "About" info.circle"#]
+        do {
+            try await Fixture.call(input, in: folder)
+            XCTFail("a view that needs values is not a destination")
+        } catch {
+            let text = "\(error)"
+            XCTAssertTrue(text.contains("`DishFeed` is a view that needs values to be made, not a page"), text)
+            XCTAssertFalse(text.contains("`About`"), "a view made with no arguments is taken: \(text)")
+        }
+    }
+
     func testModalsReplaceTheHostTheRootViewApplies() async throws {
         let folder = try await app(pages: false)
         let inert = try read(folder, "Shared/Utility/ModalHosting.swift")

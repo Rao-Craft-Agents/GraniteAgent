@@ -24,8 +24,16 @@ struct NavigationMake {
                     problems.append("the destination `\(destination.name)` is named twice")
                     continue
                 }
-                for type in [destination.viewType, destination.detailType].compactMap({ $0 }) where !index.declared.contains(type) {
-                    problems.append("`\(type)` is not in the project: make the page first (`make: component`, `type: \(type)`)")
+                for type in [destination.viewType, destination.detailType].compactMap({ $0 }) {
+                    if !index.declared.contains(type) {
+                        problems.append("`\(type)` is not in the project: make the page first (`make: component`, `type: \(type)`)")
+                    } else if index.components[type] == nil, Self.needsArguments(type, index: index) {
+                        // A destination is made with no arguments: a kit's view that needs its posts and actions
+                        // (loom's FeedView) is shown by a page (Margin, 2026-11-01).
+                        let page = type.hasSuffix("View") && type.count > 4 ? String(type.dropLast(4)) : type + "Page"
+                        problems.append("`\(type)` is a view that needs values to be made, not a page: make a page that shows it "
+                                        + "(`make: component`, `type: \(page)`, `layout: blank`, `body: \(type)(…)` filled from its relays) and name that page here")
+                    }
                 }
                 destinations.append(destination)
             } catch { problems.append("\(error)") }
@@ -96,5 +104,22 @@ struct NavigationMake {
         let after = String(text[group.upperBound...])
         return after.matches(
 #"\{\s*([A-Z][A-Za-z0-9_]*)\s*[\(\{]"#).first
+    }
+
+    /// Whether `type` cannot be made with `\(type)()`: generic, or an initializer or a stored `let` that needs a value.
+    static func needsArguments(_ type: String, index: ProjectIndex) -> Bool {
+        guard let shape = index.shapes[type], let header = shape.first else { return false }
+        if header.contains("\(type)<") { return true }
+        let members = shape.dropFirst()
+        let inits = members.filter { $0.hasPrefix("init(") || $0.contains(" init(") }
+        if !inits.isEmpty {
+            // Made with no arguments when some initializer takes none, or only defaulted ones.
+            return !inits.contains { signature in
+                guard let open = signature.firstIndex(of: "("), let close = signature.lastIndex(of: ")") else { return false }
+                let inside = String(signature[signature.index(after: open)..<close])
+                return ProjectIndex.topLevel(inside).allSatisfy { $0.trimmingCharacters(in: .whitespaces).isEmpty || $0.contains("=") }
+            }
+        }
+        return members.contains { $0.hasPrefix("let ") && !$0.contains("=") }
     }
 }
