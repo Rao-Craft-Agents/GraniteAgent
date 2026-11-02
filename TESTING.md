@@ -955,27 +955,27 @@ Level 3 of the regime (`TESTING-REGIME.md`): one prompt chaining agents, run thr
 (a book-club app made from nothing). The same section is in LoomAgent's and GraniteAgent's TESTING.md, since both are in
 every combination. Rows are oldest first, so the fixes read as a before/after line; each run's entry follows the table.
 
-Columns: wall seconds; seconds to the first agent call; agent calls made / refused / refused then corrected; files the
-model wrote by hand; seconds inside agents and in the model and Craft; compactions (kind, prompt before→after); the
-peak prompt against the window (it can pass 100%: the bound is checked between rounds, and one generation can
-overrun it); how the turn stopped; the macOS build; the auto-compaction checks (— when the run did
-not reach the state a check is about).
+Columns: the sketch and the window; wall seconds, and how many of them were spent inside agents; seconds to the first
+agent call; agent calls made / refused / refused then corrected; files the model wrote by hand; the peak prompt
+against the window (it can pass 100%: the bound is checked between rounds, and one generation can overrun it) and
+how many times the turn made room; how it stopped; the macOS build. The model, the compactions and the
+auto-compaction checks are in each run's entry.
 
-| Run | Date | Model | Sketch | Window | Wall s | First agent s | Agents m/r/c | By hand | Agents s / model s | Compactions | Peak | Stop | macOS build | Checks |
-|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| [c1](#c1) | 2026-11-01 | Qwen3-Coder-Next-REAP-48B-A3B | off | 64k | 749 | 43 | 13 / 6 / 3 | 15 | 8 / 741 | none | 109% | loopLimit | failed | room before the agents pass · no thrash — · compaction works — · the breath — |
-| [c2](#c2) | 2026-11-01 | Qwen3-Coder-Next-REAP-48B-A3B | off | 64k | 1510 | 95 | 36 / 21 / 9 | 0 | 823 / 687 | none | 95% | loopLimit | failed | room before the agents pass · no thrash — · compaction works — · the breath — |
-| [c2b](#c2b) | 2026-11-01 | Qwen3-Coder-Next-REAP-48B-A3B | off | 64k | 1509 | 87 | 25 / 10 / 8 | 1 | 962 / 546 | none | 96% | loopLimit | failed | room before the agents pass · no thrash — · compaction works — · the breath — |
-| [c2c](#c2c) | 2026-11-01 | Qwen3-Coder-Next-REAP-48B-A3B | off | 64k | 1655 | 58 | 14 / 9 / 2 | 2 | 798 / 857 | none | 96% | loopLimit | failed | room before the agents **fail** · no thrash — · compaction works — · the breath — |
-| [c3](#c3) | 2026-11-01 | Qwen3-Coder-Next-REAP-48B-A3B | off | 64k | 1568 | 64 | 11 / 5 / 3 | 4 | 993 / 575 | none | 95% | loopLimit | failed | room before the agents pass · no thrash — · compaction works — · the breath — |
-| [c3b](#c3b) | 2026-11-01 | Qwen3-Coder-Next-REAP-48B-A3B | off | 64k | 1452 | 63 | 22 / 10 / 6 | 0 | 928 / 524 | none | 99% | loopLimit | failed | room before the agents pass · no thrash — · compaction works — · the breath — |
-| [c3c](#c3c) | 2026-11-01 | Qwen3-Coder-Next-REAP-48B-A3B | off | 64k | 1155 | 66 | 18 / 4 / 2 | 5 | 458 / 696 | none | 99% | loopLimit | failed | room before the agents pass · no thrash — · compaction works — · the breath — |
-| [c3d](#c3d) | 2026-11-01 | Qwen3-Coder-Next-REAP-48B-A3B | off | 64k | 1266 | 40 | 15 / 6 / 4 | 3 | 734 / 532 | none | 96% | loopLimit | failed | room before the agents pass · no thrash — · compaction works — · the breath — |
-| [c3e](#c3e) | 2026-11-01 | Qwen3-Coder-Next-REAP-48B-A3B | off | 64k | 1167 | 63 | 13 / 4 / 3 | 1 | 791 / 377 | none | 103% | loopLimit | failed | room before the agents pass · no thrash — · compaction works — · the breath — |
-| [c3f](#c3f) | 2026-11-02 | Qwen3-Coder-Next-REAP-48B-A3B | off | 64k | 1436 | 41 | 24 / 14 / 5 | 0 | 763 / 672 | none | 106% | loopLimit | failed | room before the agents pass · no thrash — · compaction works — · the breath — |
-| [c3g](#c3g) | 2026-11-02 | Qwen3-Coder-Next-REAP-48B-A3B | off | 64k | 1280 | 69 | 15 / 5 / 5 | 1 | 764 / 516 | none | 106% | loopLimit | failed | room before the agents pass · no thrash — · compaction works — · the breath — |
-| [c4](#c4) | 2026-11-02 | Qwen3-Coder-Next-REAP-48B-A3B | off | 64k | 597 | 86 | 2 / 1 / 1 | 13 | 1 / 596 | none | 96% | loopLimit | failed | room before the agents pass · no thrash — · compaction works — · the breath — |
-| [c5](#c5) | 2026-11-02 | Qwen3-Coder-Next-REAP-48B-A3B | on | 64k | 1972 | 82 | 20 / 10 / 6 | 3 | 757 / 1215 | atAgentCall 39k→39k, atAgentCall 40k→39k, atAgentCall 42k→42k, inTurn 56k→45k | 86% | loopLimit | macOS: succeeded | room before the agents pass · compaction works pass · the breath pass · no thrash pass |
+| Run | Date | Sketch · window | Wall s (agents) | First agent s | Agents m/r/c | By hand | Peak · room made | Stop | macOS build |
+|---|---|---|---|---|---|---|---|---|---|
+| [c1](#c1) | 2026-11-01 | off · 64k | 749 (8) | 43 | 13 / 6 / 3 | 15 | 109% · 0 | loopLimit | failed |
+| [c2](#c2) | 2026-11-01 | off · 64k | 1510 (823) | 95 | 36 / 21 / 9 | 0 | 95% · 0 | loopLimit | failed |
+| [c2b](#c2b) | 2026-11-01 | off · 64k | 1509 (962) | 87 | 25 / 10 / 8 | 1 | 96% · 0 | loopLimit | failed |
+| [c2c](#c2c) | 2026-11-01 | off · 64k | 1655 (798) | 58 | 14 / 9 / 2 | 2 | 96% · 0 | loopLimit | failed |
+| [c3](#c3) | 2026-11-01 | off · 64k | 1568 (993) | 64 | 11 / 5 / 3 | 4 | 95% · 0 | loopLimit | failed |
+| [c3b](#c3b) | 2026-11-01 | off · 64k | 1452 (928) | 63 | 22 / 10 / 6 | 0 | 99% · 0 | loopLimit | failed |
+| [c3c](#c3c) | 2026-11-01 | off · 64k | 1155 (458) | 66 | 18 / 4 / 2 | 5 | 99% · 0 | loopLimit | failed |
+| [c3d](#c3d) | 2026-11-01 | off · 64k | 1266 (734) | 40 | 15 / 6 / 4 | 3 | 96% · 0 | loopLimit | failed |
+| [c3e](#c3e) | 2026-11-01 | off · 64k | 1167 (791) | 63 | 13 / 4 / 3 | 1 | 103% · 0 | loopLimit | failed |
+| [c3f](#c3f) | 2026-11-02 | off · 64k | 1436 (763) | 41 | 24 / 14 / 5 | 0 | 106% · 0 | loopLimit | failed |
+| [c3g](#c3g) | 2026-11-02 | off · 64k | 1280 (764) | 69 | 15 / 5 / 5 | 1 | 106% · 0 | loopLimit | failed |
+| [c4](#c4) | 2026-11-02 | off · 64k | 597 (1) | 86 | 2 / 1 / 1 | 13 | 96% · 0 | loopLimit | failed |
+| [c5](#c5) | 2026-11-02 | on · 64k | 1972 (757) | 82 | 20 / 10 / 6 | 3 | 86% · 4 | loopLimit | macOS: succeeded |
 
 ### c1
 
