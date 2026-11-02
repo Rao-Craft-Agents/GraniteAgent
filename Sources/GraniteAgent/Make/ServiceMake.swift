@@ -105,6 +105,16 @@ struct ServiceMake {
             problems.append("`\(event.verb)` uses " + unseen.map { "`\($0)`" }.joined(separator: ", ")
                             + ", which its work cannot see: it sees " + ways.joined(separator: ", ") + reach)
         }
+        // A client no package declares (`SocialAPI.loadFeed(…)`, Margin 2026-11-01) cannot build: the app needs its
+        // API client first. Only names that read as a client are held to this; a framework's types are not known here.
+        for event in events {
+            guard let expression = event.expression?.trimmingCharacters(in: .whitespaces),
+                  let root = expression.split(whereSeparator: { !($0.isLetter || $0.isNumber || $0 == "_") }).first.map(String.init),
+                  root.first?.isUppercase == true, !index.declared.contains(root),
+                  ["API", "Client", "Kit", "Store", "Repository", "Backend", "Server"].contains(where: { root.hasSuffix($0) }) else { continue }
+            problems.append("`\(event.verb)` calls `\(root)`, which the project does not declare: make the app's API client first "
+                            + "(`$network`, with `$models` for its types and `$mocks` for data before a server exists), then call it by its type")
+        }
         let needsBodies = events.filter { $0.expression == nil }
         if !needsBodies.isEmpty, model == nil {
             problems.append("\(needsBodies.map(\.verb).joined(separator: ", ")) \(needsBodies.count == 1 ? "has" : "have") no `= expression`, and this host has no model to write the work: give the call that does it")

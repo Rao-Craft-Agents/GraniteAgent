@@ -886,3 +886,65 @@ With $granite, make Hearth's Feed page: it shows FeedService's posts in loom's F
 **Notes**:
 - The model added a `views` line for the FeedView: its subview was named `FeedFeedViewView`, and its prompt had none of the shapes the page prompt now carries, so its body failed to parse three times and granite wrote nothing, as it should.
 - Fixed in the next release: a role ending in View is named once, and a subview is asked for with the shapes its description names.
+
+## Conformance on Hearth
+
+Level 1 of the regime: the call a model should write, sent straight to the installed runner over its wire
+(granite-agent/1) with no model, on a copy of Hearth as the journey left it (services, mock data and loom's views
+made), then checked by building, testing and screenshotting the app. A pass here means the agent can produce the
+result deterministically; whether Craft's model writes this call is tested by the prompts above.
+
+### Hearth's Feed page hosting loom's FeedView, with its body in the call
+
+*2026-11-01 · straight to the runner, no model*
+
+**The call**:
+
+```json
+{
+  "make": "component",
+  "type": "Feed",
+  "layout": "blank",
+  "relays": [
+    "feed: FeedService"
+  ],
+  "actions": [
+    "refresh = _ = try await feed.loadFirstPage()",
+    "more = _ = try await feed.loadMore()"
+  ],
+  "imports": [
+    "HearthKit"
+  ],
+  "body": "FeedView<AppSocial, EmptyView>(\n    title: Text(\"Feed\"),\n    posts: feed.state.feedPosts,\n    phase: feed.state.loading == nil ? .idle : .loading,\n    actions: SocialActions<AppSocial>(\n        vote: { target, vote in\n            guard case .post(let post) = target else { return }\n            Task { try? await feed.vote(post: post, action: vote == .up ? \"up\" : vote == .down ? \"down\" : \"none\") }\n        },\n        save: { target in\n            guard case .post(let post) = target else { return }\n            Task { try? await feed.save(post: post) }\n        },\n        loadMore: { try? await more() },\n        refresh: { try? await refresh() }\n    )\n)\n.task { if feed.state.feedPosts.isEmpty { try? await refresh() } }"
+}
+```
+
+**Checks**:
+- macOS build: BUILD SUCCEEDED
+- On the iPhone 18 Pro simulator with `-mock YES -destination feed`: the feed draws the mock posts in loom's cards
+
+![The Feed page on the mock backend, in Hearth's colours](Docs/Testing/l1-l1-feed-brand.png)
+*The Feed page on the mock backend, in Hearth's colours*
+
+**Notes**:
+- The page title is said twice (the navigation's and FeedView's `title`): the call's body should leave FeedView's title out.
+
+### Hearth's navigation
+
+*2026-11-01 · straight to the runner, no model*
+
+**The call**:
+
+```json
+{
+  "make": "navigation",
+  "destinations": [
+    "feed: Feed \"Feed\" house"
+  ],
+  "style": "adaptive"
+}
+```
+
+**Checks**:
+- a tab bar on iPhone, a sidebar on iPad and the Mac; `-destination feed` opens the Feed
+- macOS build: BUILD SUCCEEDED

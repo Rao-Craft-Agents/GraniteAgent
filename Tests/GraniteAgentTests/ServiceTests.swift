@@ -207,6 +207,21 @@ final class ServiceTests: XCTestCase {
         }
     }
 
+    /// A call to a client the project does not declare is refused, pointing to the agents that make one (Margin).
+    func testACallToAClientThatDoesNotExistIsRefused() async throws {
+        let folder = try await app()
+        let input = GraniteAppAgent.Input(make: .service, type: "Club", state: ["recipes [Recipe] = []"],
+                                          events: ["load(page Int) -> recipes = SocialAPI.loadFeed(page: page)", "note(text String) = FileManager.default.temporaryDirectory.path.count"])
+        do {
+            try await Fixture.call(input, in: folder)
+            XCTFail("the call is refused")
+        } catch {
+            let text = "\(error)"
+            XCTAssertTrue(text.contains("`load` calls `SocialAPI`, which the project does not declare") && text.contains("`$network`"), text)
+            XCTAssertFalse(text.contains("`note` calls"), "a framework's type is not held to it: \(text)")
+        }
+    }
+
     func testARelayThatWouldLoopIsRefused() async throws {
         let folder = try await app()
         try await Fixture.call(GraniteAppAgent.Input(make: .service, type: "Index", state: ["count Int = 0"],
