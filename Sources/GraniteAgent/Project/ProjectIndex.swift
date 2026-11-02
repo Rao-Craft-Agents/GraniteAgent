@@ -45,6 +45,8 @@ struct ProjectIndex {
     var swiftFiles: [URL] = []
     /// The module a type is declared in, when it is a local package's (`Packages/<Kit>/Sources/<Module>/…`).
     var modules: [String: String] = [:]
+    /// What each function answers, by its name, as declared anywhere: a client's `posts(page:)` answers `PostPage`.
+    var returns: [String: Set<String>] = [:]
 
 
     /// Every type declared anywhere, by name.
@@ -109,10 +111,34 @@ struct ProjectIndex {
             info.fields = fields; info.cases = cases; info.hasTitle = hasTitle
             if types[name] == nil || types[name]?.fields.isEmpty == true { types[name] = info }
         }
+        for (name, type) in Self.functionReturns(in: text) { returns[name, default: []].insert(type) }
         for match in text.matches(#"static (?:let|var) preview: ([A-Z]\w*)"#) { previews.insert(match) }
         if text.contains("final class AppRoot") { appRoot = url }
         for root in text.matches(#"(?:public )?final class ([A-Z]\w*Root)\b"#) where root != "AppRoot" { kitRoots[root] = url }
         if text.contains("final class RelayClock") { hasRelayClock = true }
+    }
+
+    /// Each `func name(…) async throws -> Type` in `text`, by name and answer, its parameters on any number of lines.
+    static func functionReturns(in text: String) -> [(name: String, type: String)] {
+        let source = text as NSString
+        guard let pattern = try? NSRegularExpression(pattern: #"\bfunc\s+([A-Za-z_][A-Za-z0-9_]*)\s*(?:<[^>{]*>)?\s*\("#) else { return [] }
+        var found: [(name: String, type: String)] = []
+        for match in pattern.matches(in: text, range: NSRange(location: 0, length: source.length)) {
+            var position = match.range.location + match.range.length, depth = 1
+            while position < source.length, depth > 0 {
+                let unit = source.character(at: position)
+                if unit == 40 { depth += 1 } else if unit == 41 { depth -= 1 }
+                position += 1
+            }
+            guard depth == 0 else { continue }
+            // After the parameters: the effects, then `-> Type`, up to the body, a `where` or the line's end.
+            let head = source.substring(from: position).prefix { $0 != "{" && $0 != "\n" }
+            guard let arrow = head.range(of: "->") else { continue }
+            var type = head[arrow.upperBound...].trimmingCharacters(in: .whitespaces)
+            if let clause = type.range(of: " where ") { type = String(type[..<clause.lowerBound]).trimmingCharacters(in: .whitespaces) }
+            if !type.isEmpty { found.append((source.substring(with: match.range(at: 1)), type)) }
+        }
+        return found
     }
 
     /// The module a file of a package compiles into: the folder under `Sources/`.

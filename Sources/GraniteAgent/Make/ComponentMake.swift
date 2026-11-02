@@ -34,7 +34,7 @@ struct ComponentMake {
             do {
                 let relay = try RelayLine.parse(line)
                 if index.services[relay.type] == nil {
-                    problems.append("`\(relay.type)` is not in the project: make it first (`make: service`, `type: \(SwiftName.service(relay.type).base)`)")
+                    problems.append(RelayLine.missing(line, relay: relay, declared: index.declared))
                 } else if relays.contains(where: { $0.name == relay.name }) {
                     problems.append("the relay `\(relay.name)` is named twice")
                 } else {

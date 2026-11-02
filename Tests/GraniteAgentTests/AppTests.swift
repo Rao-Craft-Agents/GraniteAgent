@@ -155,6 +155,19 @@ final class AppTests: XCTestCase {
         XCTAssertEqual(try read(folder, "Greeter.xcodeproj/project.pbxproj"), before)
     }
 
+    /// A model that calls link in an app this agent made (Hearth, 2026-11-01) is told everything is in place, and
+    /// nothing is written: the boot tests `make: project` wrote as `<App>Tests.swift` are found by what they hold.
+    func testLinkAddsNothingToAnAppThisAgentMade() async throws {
+        let folder = try Fixture.folder()
+        try await Fixture.call(GraniteAppAgent.Input(make: .project, name: "Larder", bundleId: "com.example.larder"), in: folder)
+        let before = try read(folder, "Larder.xcodeproj/project.pbxproj")
+        let again = try await Fixture.call(GraniteAppAgent.Input(make: .link), in: folder)
+        XCTAssertEqual(again.paths, [], "link adds nothing to a Granite app")
+        XCTAssertTrue(again.notes.contains { $0.contains("nothing to add") }, "\(again.notes)")
+        XCTAssertEqual(try read(folder, "Larder.xcodeproj/project.pbxproj"), before)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: folder.appendingPathComponent("Tests/BootTests.swift").path))
+    }
+
     func testLinkLeavesAWindowGroupThatIsNotPlainAndSaysWhatToChange() async throws {
         let folder = try Fixture.folder()
         try ClassicProject.write(to: folder)

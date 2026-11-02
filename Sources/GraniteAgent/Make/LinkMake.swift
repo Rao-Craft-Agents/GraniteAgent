@@ -82,7 +82,7 @@ struct LinkMake {
             add(components.appendingPathComponent("\(root)/\(root)+Center.swift"), RootTemplates.center(root))
             add(components.appendingPathComponent("\(root)/\(root)+View.swift"), RootTemplates.view(root, ready: .content))
         }
-        if let (folder, module) = try workspace.unitTests(), !FileManager.default.fileExists(atPath: folder.appendingPathComponent("BootTests.swift").path) {
+        if let (folder, module) = try workspace.unitTests(), !Self.hasBootTests(in: folder) {
             plan.write(folder.appendingPathComponent("BootTests.swift"), BootTemplates.tests(name: "Boot", module: module), role: .tests)
         }
         if !kept.isEmpty { plan.notes.append("kept what the project already had: \(kept.joined(separator: ", "))") }
@@ -103,6 +103,15 @@ struct LinkMake {
         plan.types = ["AppRoot", "EnvironmentService", "ConfigService", root].filter { type in plan.files.contains { $0.url.lastPathComponent.hasPrefix(type) } }
         if plan.files.isEmpty { plan.notes.append("Granite was linked and everything is in place: nothing to add") }
         return plan
+    }
+
+    /// Whether a test file in `folder` already holds the boot tests, whatever it is called: `make: project` writes them
+    /// as `<App>Tests.swift`, an earlier link as `BootTests.swift`.
+    static func hasBootTests(in folder: URL) -> Bool {
+        let files = FileManager.default.enumerator(at: folder, includingPropertiesForKeys: nil)?.compactMap { $0 as? URL } ?? []
+        return files.contains { url in
+            url.pathExtension == "swift" && ((try? String(contentsOf: url, encoding: .utf8))?.contains("func bootingMarksTheAppReady()") ?? false)
+        }
     }
 
     /// `text` with the one view its `WindowGroup` shows wrapped in `root`; nil when the group shows anything else.

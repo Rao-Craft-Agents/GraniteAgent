@@ -23,4 +23,18 @@ enum RelayLine {
         guard SwiftName.isMemberName(variable) else { throw GraniteError.line(line, "`\(variable)` is not a variable name (lowerCamelCase)") }
         return Relay(name: variable, type: type)
     }
+
+    /// Why `relay` cannot be held, when the project has no such service. A type it has that is not a service (a
+    /// client, a model) is called in an event's work, not relayed: told "make it first", a model made an empty
+    /// `HearthClientService` to hold `client: HearthClient` (Hearth, 2026-11-01).
+    static func missing(_ line: String, relay: Relay, declared: Set<String>) -> String {
+        let text = line.trimmingCharacters(in: .whitespaces)
+        let named = (text.firstIndex(of: ":").map { String(text[text.index(after: $0)...]) } ?? text.split(separator: " ").last.map(String.init) ?? text)
+            .trimmingCharacters(in: .whitespaces)
+        if named != relay.type, declared.contains(named) {
+            return "`\(named)` is not a service, so it is not relayed: an event's work calls it (`load(page Int) -> items = \(named)…`), "
+                + "and `relays` name only the app's services (`feed: FeedService`)"
+        }
+        return "`\(relay.type)` is not in the project: make it first (`make: service`, `type: \(SwiftName.service(relay.type).base)`)"
+    }
 }

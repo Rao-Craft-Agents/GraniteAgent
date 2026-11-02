@@ -58,6 +58,15 @@ struct ServiceMake {
                 events.append(event)
             } catch { problems.append("\(error)") }
         }
+        // A call that answers an envelope (a page with its list and a total) is read for the member the field holds.
+        var unwrapped: [String] = []
+        for position in events.indices {
+            guard let name = events[position].write.field, let field = fields.first(where: { $0.name == name }),
+                  let expression = events[position].expression,
+                  let read = Self.unwrap(expression, into: "\(field.type)", index: index) else { continue }
+            events[position].expression = expression.trimmingCharacters(in: .whitespaces) + "." + read.member
+            unwrapped.append("`\(events[position].verb)` reads `.\(read.member)` of the \(read.answer) that `\(read.method)(…)` answers")
+        }
         var relays: [Relay] = []
         for line in input.relays ?? [] where !line.trimmingCharacters(in: .whitespaces).isEmpty {
             do {
@@ -65,7 +74,7 @@ struct ServiceMake {
                 if relay.type == type {
                     problems.append("\(type) cannot hold a relay to itself: its reducers reach it with `Live.service` (a stored relay to itself recurses at construction)")
                 } else if index.services[relay.type] == nil {
-                    problems.append("`\(relay.type)` is not in the project: make it first (`make: service`, `type: \(SwiftName.service(relay.type).base)`)")
+                    problems.append(RelayLine.missing(line, relay: relay, declared: index.declared))
                 } else if index.reaches(relay.type, type) {
                     problems.append("\(relay.type)'s reducers already reach \(type): a relay back would close a loop that recurses at construction; let one of them call the other through the root")
                 } else if EventLine.reservedParameters.contains(relay.name) || events.contains(where: { $0.params.contains { $0.name == relay.name } }) {
@@ -148,6 +157,7 @@ struct ServiceMake {
         } else {
             plan.notes.append("no root holds the relays, so \(type) is hosted by the first page that reads it")
         }
+        plan.notes += unwrapped
         if spec.hasLane { plan.notes.append("\(type)'s work that writes the state runs one call at a time, in order, through its lane") }
         if let key = spec.persistKey { plan.notes.append("\(type)'s state persists under \(key); a page reads it once `\(SwiftName.relayName(type)).isLoaded`") }
         return plan
@@ -174,6 +184,42 @@ struct ServiceMake {
 
     /// What the model is told about one unit of work: the function, the state it serves, the services and types it
     /// may use.
+    /// The member of what `expression` answers that the field holds, when the answer is not the field's type: a page
+    /// envelope (`PostPage`) read for its list (`.posts`). Nil when the call answers the field's type, when its answer
+    /// is not known (or two functions of its name answer differently), or when no single member fits.
+    static func unwrap(_ expression: String, into fieldType: String, index: ProjectIndex) -> (member: String, answer: String, method: String)? {
+        let call = expression.trimmingCharacters(in: .whitespaces)
+        guard call.hasSuffix(")"), let method = Self.method(of: call), let answers = index.returns[method], answers.count == 1,
+              let answer = answers.first.map(Self.plain) else { return nil }
+        let wanted = Self.plain(fieldType)
+        guard answer != wanted, let info = index.types[answer] else { return nil }
+        let fitting = info.fields.filter { Self.plain($0.type) == wanted }
+        guard fitting.count == 1 else { return nil }
+        return (fitting[0].name, answer, method)
+    }
+
+    /// The function a call ends in: `posts` in `HearthClient.current.posts(page: page)`.
+    static func method(of call: String) -> String? {
+        var depth = 0
+        var open: String.Index?
+        for position in call.indices.reversed() {
+            if call[position] == ")" { depth += 1 } else if call[position] == "(" {
+                depth -= 1
+                if depth == 0 { open = position; break }
+            }
+        }
+        guard let open else { return nil }
+        let name = String(call[..<open].reversed().prefix { $0.isLetter || $0.isNumber || $0 == "_" }.reversed())
+        return name.isEmpty ? nil : name
+    }
+
+    /// A type as compared: no spaces, no `?` at its end.
+    static func plain(_ type: String) -> String {
+        var text = type.replacingOccurrences(of: " ", with: "")
+        while text.hasSuffix("?") || text.hasSuffix("!") { text.removeLast() }
+        return text
+    }
+
     static func workPrompt(_ event: Event, spec: ServiceSpec, index: ProjectIndex, notes: String?) -> String {
         let parameters = event.params.map { "\($0.name): \($0.type)" } + spec.relays.map { "\($0.name): \($0.type)" }
         var lines = ["Function: static func work(\(parameters.joined(separator: ", "))) async throws\(spec.resultType(event).map { " -> \($0)" } ?? "")"]

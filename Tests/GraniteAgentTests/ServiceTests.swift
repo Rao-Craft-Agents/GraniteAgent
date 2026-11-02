@@ -109,6 +109,55 @@ final class ServiceTests: XCTestCase {
         XCTAssertFalse(FileManager.default.fileExists(atPath: folder.appendingPathComponent("Services/FeedService").path))
     }
 
+    /// A client the app has is called in an event's work, not relayed: told "make it first", a model made an empty
+    /// `HearthClientService` to hold `client: HearthClient` (Hearth, 2026-11-01).
+    func testARelayToAClientSaysItIsCalledNotRelayed() async throws {
+        let folder = try await app()
+        try "public struct RecipeClient { public init() {} }\n".write(to: folder.appendingPathComponent("Shared/RecipeClient.swift"), atomically: true, encoding: .utf8)
+        let input = GraniteAppAgent.Input(make: .service, type: "Feed", state: ["posts [String] = []"],
+                                          events: ["load(page Int) -> posts = API.load(page)"], relays: ["client: RecipeClient"])
+        do {
+            try await Fixture.call(input, in: folder)
+            XCTFail("the call is refused")
+        } catch {
+            let text = "\(error)"
+            XCTAssertTrue(text.contains("`RecipeClient` is not a service, so it is not relayed"), text)
+            XCTAssertFalse(text.contains("make it first"), text)
+        }
+    }
+
+    /// A call that answers a page envelope is read for the list the field holds (Hearth, 2026-11-01: six reducers
+    /// typed `[Post]` around a call answering `PostPage` did not build, and the model fixed each by hand).
+    func testAnEnvelopeIsReadForTheListTheFieldHolds() async throws {
+        let folder = try await app()
+        try """
+        public struct ShelfPage: Codable {
+            public var recipes: [Recipe]
+            public var total: Int
+        }
+
+        public enum PantryAPI {
+            public static func shelf(
+                _ page: Int,
+                limit: Int = 20
+            ) async throws -> ShelfPage { ShelfPage(recipes: [], total: 0) }
+        }
+        """.write(to: folder.appendingPathComponent("Shared/PantryAPI.swift"), atomically: true, encoding: .utf8)
+        let input = GraniteAppAgent.Input(make: .service, type: "Recipes", state: ["recipes [Recipe] = []", "total Int = 0"],
+                                          events: ["load(page Int) -> recipes = PantryAPI.shelf(page)", "more(page Int) +> recipes = PantryAPI.shelf(page)",
+                                                   "count(page Int) -> total = PantryAPI.shelf(page).total"])
+        let result = try await Fixture.call(input, in: folder)
+        for verb in ["Load", "More"] {
+            let text = try read(folder, "Services/RecipesService/Reducers/RecipesService.\(verb).swift")
+            XCTAssertTrue(text.contains("PantryAPI.shelf(page).recipes"), text)
+        }
+        let count = try read(folder, "Services/RecipesService/Reducers/RecipesService.Count.swift")
+        XCTAssertTrue(count.contains("PantryAPI.shelf(page).total") && !count.contains(".total.total"), "a member already read is kept: \(count)")
+        XCTAssertTrue(result.notes.contains { $0.contains("`load` reads `.recipes` of the ShelfPage that `shelf(…)` answers") }, "\(result.notes)")
+        XCTAssertNil(ServiceMake.unwrap("RecipeAPI.page(page)", into: "[Recipe]", index: ProjectIndex(root: folder)),
+                     "a call that already answers the field's type is kept")
+    }
+
     func testARelayThatWouldLoopIsRefused() async throws {
         let folder = try await app()
         try await Fixture.call(GraniteAppAgent.Input(make: .service, type: "Index", state: ["count Int = 0"],
