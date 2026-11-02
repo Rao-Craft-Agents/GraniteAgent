@@ -133,4 +133,10 @@ final class LineTests: XCTestCase {
         XCTAssertEqual(SwiftName.member("default"), "`default`")
         XCTAssertEqual(SwiftName.member("open"), "open", "a contextual keyword is a name like any other")
     }
+
+    /// `_ name Type` is taken as `name Type` (Margin, 2026-11-01).
+    func testAnEventParameterMayStartWithAnUnderscore() throws {
+        let event = try EventLine.parse("create(_ body NewPost) -> post = API.create(body)")
+        XCTAssertEqual(event.params.map(\.name), ["body"])
+    }
 }

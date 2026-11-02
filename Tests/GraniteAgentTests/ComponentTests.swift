@@ -246,6 +246,23 @@ final class ComponentTests: XCTestCase {
         try await Fixture.call(loaded, in: folder)
     }
 
+    /// A page named as a local package's type is refused, since it would shadow it (Margin's `PostPage`).
+    func testAPageNamedAsAPackagesTypeIsRefused() async throws {
+        let folder = try await app()
+        let sources = folder.appendingPathComponent("Packages/ShelfKit/Sources/ShelfKit")
+        try FileManager.default.createDirectory(at: sources, withIntermediateDirectories: true)
+        try "// swift-tools-version: 5.9\n".write(to: folder.appendingPathComponent("Packages/ShelfKit/Package.swift"), atomically: true, encoding: .utf8)
+        try "public struct ShelfPage: Codable {\n    public var items: [String]\n}\n".write(to: sources.appendingPathComponent("ShelfPage.swift"), atomically: true, encoding: .utf8)
+        let input = GraniteAppAgent.Input(make: .component, type: "ShelfPage", relays: ["recipes: RecipesService"], layout: .list,
+                                          shows: ["items = recipes.state.recipes"], actions: ["refresh = try await recipes.load(page: 1)"])
+        do {
+            try await Fixture.call(input, in: folder)
+            XCTFail("the page is refused")
+        } catch {
+            XCTAssertTrue("\(error)".contains("`ShelfPage` is ShelfKit's type: name the page something else, like `ShelfDetail`"), "\(error)")
+        }
+    }
+
     func testAPageItCannotDrawIsRefusedWithEveryReason() async throws {
         let folder = try await app()
         let input = GraniteAppAgent.Input(make: .component, type: "FeedComponent", relays: ["feed: FeedService"], layout: .threePane,

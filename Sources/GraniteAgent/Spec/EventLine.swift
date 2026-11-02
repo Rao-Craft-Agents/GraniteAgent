@@ -42,7 +42,12 @@ enum EventLine {
         if rest.hasPrefix("(") {
             guard let close = closingParenthesis(rest) else { throw GraniteError.line(line, "`(` after \(verb) is never closed") }
             let inside = String(rest[rest.index(after: rest.startIndex)..<close])
-            params = try LineSplit.top(inside, on: ",").map { try FieldLine.parseField($0, in: line) }
+            // `_ body NewPost` is a Swift habit: the label is dropped, a parameter is its name and type (Margin, 2026-11-01).
+            params = try LineSplit.top(inside, on: ",").map { piece in
+                var text = piece.trimmingCharacters(in: .whitespaces)
+                if text.hasPrefix("_ ") { text = String(text.dropFirst(2)) }
+                return try FieldLine.parseField(text, in: line)
+            }
             rest = String(rest[rest.index(after: close)...]).trimmingCharacters(in: .whitespaces)
         }
         var seen: Set<String> = []

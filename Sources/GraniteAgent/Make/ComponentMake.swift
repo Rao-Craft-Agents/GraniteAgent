@@ -28,6 +28,11 @@ struct ComponentMake {
         }
         guard SwiftName.isTypeName(type) else { throw GraniteError.refused(["`\(type)` is not a type name in UpperCamelCase"]) }
         let index = ProjectIndex(root: workspace.root)
+        // A page named as a package's type shadows it in the app (Margin, 2026-11-01: a `PostPage` page beside
+        // MarginKit's `PostPage`, the page of posts its client answers).
+        if let module = index.modules[type], index.components[type] == nil {
+            problems.append("`\(type)` is \(module)'s type: name the page something else, like `\(type.hasSuffix("Page") ? String(type.dropLast(4)) + "Detail" : type + "Page")`")
+        }
 
         var relays: [Relay] = []
         for line in input.relays ?? [] where !line.trimmingCharacters(in: .whitespaces).isEmpty {
