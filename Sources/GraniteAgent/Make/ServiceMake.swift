@@ -233,14 +233,16 @@ struct ServiceMake {
             let type = types.first!
             if Self.plain(type) == Self.plain(wanted) {
                 fitting.append("`\(other)(…)` answers `\(type)`")
-            } else if let info = index.types[Self.plain(type)], let member = info.fields.first(where: { Self.plain($0.type) == Self.plain(wanted) }),
+            } else if Self.plain(wanted).hasPrefix("["), let info = index.types[Self.plain(type)],
+                      let member = info.fields.first(where: { Self.plain($0.type) == Self.plain(wanted) }),
                       info.fields.filter({ Self.plain($0.type) == Self.plain(wanted) }).count == 1 {
+                // Only a list is read out of an answer: a page's `.posts`, never a post's `.author`.
                 fitting.append("`\(other)(…)` answers `\(type)`, read for its `.\(member.name)`")
             }
         }
-        let offer = fitting.isEmpty ? "write the work in `notes` instead, or hold the answer in a field of its type"
-            : "call one that does: " + fitting.prefix(3).joined(separator: "; ")
-        return "`\(method)(…)` answers `\(answer)`, and `\(field.name)` holds `\(wanted)`: \(offer)"
+        var offers = ["keep the call and drop the write (`verb(…) = \(method)(…)` answers when it is done), and fill `\(field.name)` in another event"]
+        if !fitting.isEmpty { offers.insert("call one that does: " + fitting.prefix(3).joined(separator: "; "), at: 0) }
+        return "`\(method)(…)` answers `\(answer)`, and `\(field.name)` holds `\(wanted)`: " + offers.joined(separator: "; or ")
     }
 
     /// The names a call starts from: its receiver (`client` in `client.load(page)`) and each argument's first name

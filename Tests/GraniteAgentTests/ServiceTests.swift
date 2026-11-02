@@ -203,6 +203,7 @@ final class ServiceTests: XCTestCase {
             let text = "\(error)"
             XCTAssertTrue(text.contains("`load`: `shelves(…)` answers `Shelves<Recipe>`, and `recipes` holds `[Recipe]`"), text)
             XCTAssertTrue(text.contains("`shelf(…)` answers `ShelfPage`, read for its `.recipes`"), text)
+            XCTAssertTrue(text.contains("or keep the call and drop the write"), text)
         }
     }
 
