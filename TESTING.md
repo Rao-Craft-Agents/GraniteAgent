@@ -979,6 +979,7 @@ auto-compaction checks are in each run's entry.
 | [c6](#c6) | 2026-11-02 | on · 64k | 1588 (1) | 1584 | 1 / 1 / 0 | 11 | 84% · 4 | loopLimit | failed |
 | [c7](#c7) | 2026-11-02 | on · 64k | 910 (25) | 217 | 5 / 1 / 1 | 9 | 77% · 1 | loopLimit | failed |
 | [c8](#c8) | 2026-11-02 | on · 64k | 897 (1) | 221 | 3 / 2 / 1 | 13 | 86% · 1 | loopLimit | failed |
+| [c9](#c9) | 2026-11-02 | on · 64k | 1223 (1) | 171 | 2 / 2 / 0 | 4 | 86% · 3 | loopLimit | macOS: succeeded |
 
 ### c1
 
@@ -1896,3 +1897,49 @@ auto-compaction checks are in each run's entry.
 
 ![Outcome card for c8](Docs/Testing/l3-c8-c8.png)
 *Outcome card for c8*
+
+### c9
+
+*2026-11-02 · Qwen3-Coder-Next-REAP-48B-A3B · sketch on · 64k window · Craft 5065474 · granite c49a312*
+
+**Prompt**:
+
+> Now give Margin its pages with $granite: a Feed that shows FeedService's posts in loom's FeedView and loads them when it appears, a Post page with its thread, and a Profile; then navigation with Feed and Profile as tabs.
+
+**Time**: 1223 s in all; 1 s inside agents, 1222 s the model and Craft; first agent call at 171 s.
+
+**Calls** (offset s · duration s · result):
+
+- 171 · 0.5 · `granite` **refused** — granite: granite refused: `refresh`: FeedService has no `load`; it has no work yet: give it one first: `make: service`, `type: Feed`, `events: ["load(…) -> … = …"]`
+- 218 · 0.0 · `edit_file` ok — Services/FeedService/Ops/FeedOps.swift
+- 251 · 0.0 · `edit_file` **refused** — Services/FeedService/Reducers/FeedService.Set.swift: old_string was not found in the file. You are replacing most of this file — write_file with the full new contents is the tool for that. The closest text is at l
+- 274 · 0.0 · `write_file` ok — Services/FeedService/Reducers/FeedService.Set.swift
+- 284 · 0.3 · `granite` **refused** — granite: granite refused: `refresh`: FeedService has no `load`; it has no work yet: give it one first: `make: service`, `type: Feed`, `events: ["load(…) -> … = …"]`
+- 523 · 0.0 · `write_file` ok — Services/FeedService/Ops/FeedOps.swift
+- 556 · 0.0 · `write_file` ok — Services/FeedService/Reducers/FeedService.Set.swift
+- 728 · 0.0 · `write_file` ok — Services/FeedService/Reducers/FeedService.Set.swift
+- 797 · 0.0 · `write_file` ok — Services/FeedService/Reducers/FeedService.Set.swift
+- 944 · 0.0 · `edit_file` ok — Tests/FeedOpsTests.swift
+- 996 · 0.0 · `edit_file` ok — Tests/PostOpsTests.swift
+
+41 reads, 65 calls in all.
+
+**Who wrote what**:
+
+- by hand: 4 files — Services/FeedService/Ops/FeedOps.swift, Services/FeedService/Reducers/FeedService.Set.swift, Tests/FeedOpsTests.swift, Tests/PostOpsTests.swift
+
+**Window**: peak 86% of 64k; compactions: inTurn 62k→41k, inTurn 57k→38k, inTurn 55k→41k; checks: room before the agents pass · compaction works pass · the breath — · no thrash **fail**; 3 re-reads after the first compaction
+
+**Stopped**: loopLimit: out of tool rounds (50); one last call offered to `granite`
+
+**Build**: macOS: succeeded
+
+**Notes**:
+- granite's refusal said to give FeedService its `load` first with `make: service`; the model wrote the work into FeedService by hand instead (Ops and Set), which granite does not count as the service's work, and called the page again, refused the same way. The hand-edit note fired after the refusal (218 s). The app builds; no pages.
+- Next, per the regime's order (a prompt pattern before agent code): the same request, worded in the order the work has to happen (c10).
+
+![Outcome card for c9](Docs/Testing/l3-c9-c9.png)
+*Outcome card for c9*
+
+![iPhone, light: builds, still the root page](Docs/Testing/l3-c9-c9-home.png)
+*iPhone, light: builds, still the root page*
