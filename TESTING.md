@@ -981,6 +981,7 @@ auto-compaction checks are in each run's entry.
 | [c7](#c7) | 2026-11-02 | on · 64k | 910 (25) | 217 | 5 / 1 / 1 | 9 | 77% · 1 | loopLimit | failed |
 | [c8](#c8) | 2026-11-02 | on · 64k | 897 (1) | 221 | 3 / 2 / 1 | 13 | 86% · 1 | loopLimit | failed |
 | [c9](#c9) | 2026-11-02 | on · 64k | 1223 (1) | 171 | 2 / 2 / 0 | 4 | 86% · 3 | loopLimit | macOS: succeeded |
+| [s1](#s1) | 2026-11-02 | on · 32k | 1271 (1092) | 66 | 5 / 1 / 1 | 0 | 96% · 0 | loopLimit | macOS: succeeded |
 
 ### c1
 
@@ -2004,3 +2005,43 @@ auto-compaction checks are in each run's entry.
 
 ![iPhone, light: builds, still the root page](Docs/Testing/l3-c9-c9-home.png)
 *iPhone, light: builds, still the root page*
+
+### s1
+
+*2026-11-02 · Qwen3-Coder-Next-REAP-48B-A3B · sketch on · 32k window · Craft 5065474 · granite c49a312 · window 32k*
+
+**Prompt**:
+
+> Build a social app called Margin, like $loom with $granite: book clubs where readers post what they are reading and talk through chapters in threaded comments, with a feed, a post page with its thread, and profiles. Its API client and types come from $network, and believable data from $mocks until the server exists.
+
+**Time**: 1271 s in all; 1092 s inside agents, 180 s the model and Craft; first agent call at 66 s.
+
+**Calls** (offset s · duration s · result):
+
+- 66 · 0.8 · `granite` ok — granite com.example.margin
+- 106 · 0.0 · `network` **refused** — network bearer: network refused: `GET /v1/clubs` answers `ClubPage`, which no entity line declares: add its line
+- 140 · 1.7 · `network` ok — network bearer
+- 161 · 1088.7 · `mocks` ok — mocks
+- 1260 · 0.5 · `granite` ok — granite service
+
+0 reads, 5 calls in all.
+
+**Who wrote what**:
+
+- `granite`: 33 files — .gitignore, Components/Home/Home+Center.swift, Components/Home/Home+View.swift, Components/Home/Home.swift, Margin.xcodeproj/project.pbxproj, Margin.xcodeproj/project.xcworkspace/contents.xcworkspacedata, Margin.xcodeproj/xcshareddata/xcschemes/Margin-iOS.xcscheme, Margin.xcodeproj/xcshareddata/xcschemes/Margin-macOS.xcscheme …
+- `mocks`: 21 files — Packages/MarginKit/Sources/MarginKit/Mocks/Fixtures/ClubsFixture.swift, Packages/MarginKit/Sources/MarginKit/Mocks/Fixtures/CommentsFixture.swift, Packages/MarginKit/Sources/MarginKit/Mocks/Fixtures/CreateClubFixture.swift, Packages/MarginKit/Sources/MarginKit/Mocks/Fixtures/CreateCommentFixture.swift, Packages/MarginKit/Sources/MarginKit/Mocks/Fixtures/CreatePostFixture.swift, Packages/MarginKit/Sources/MarginKit/Mocks/Fixtures/PostsFixture.swift, Packages/MarginKit/Sources/MarginKit/Mocks/Fixtures/UpdateProfileFixture.swift, Packages/MarginKit/Sources/MarginKit/Mocks/Fixtures/UserCommentsFixture.swift …
+- `network`: 49 files — Margin.xcodeproj/project.pbxproj, Packages/MarginKit/Package.swift, Packages/MarginKit/Sources/MarginKit/Auth/AuthScheme.swift, Packages/MarginKit/Sources/MarginKit/Auth/KeychainTokenStore.swift, Packages/MarginKit/Sources/MarginKit/Auth/MemoryTokenStore.swift, Packages/MarginKit/Sources/MarginKit/Auth/TokenStore.swift, Packages/MarginKit/Sources/MarginKit/Coding/DateParsing.swift, Packages/MarginKit/Sources/MarginKit/Coding/MarginCoding.swift …
+- by hand: 0 files
+
+**Window**: peak 96% of 32k; compactions: none; checks: room before the agents **fail** · compaction works — · the breath **fail** · no thrash —
+
+**Stopped**: loopLimit: the context window is nearly full (32768 tokens)
+
+**Build**: macOS: succeeded
+
+**Notes**:
+- The stress variant: the combination prompt with a 32k window. The turn's first prompt was already 19.8k tokens (60%) before any work: the system prompt, the five required agents' guides, the retrieved context and the plan. Five rounds in (project, client, mocks) it reached 96% and closed; there was nothing to empty, since the space went to fixed text and agent answers, which compaction keeps.
+- Finding: at 32k the fixed prompt, mostly the agents' guides (granite's alone is 4,577 characters), leaves too little room for work. Compaction cannot help with it; shorter guides, or agents that need less said to them, can.
+
+![Outcome card for s1, the 32k stress run](Docs/Testing/l3-s1-s1.png)
+*Outcome card for s1, the 32k stress run*

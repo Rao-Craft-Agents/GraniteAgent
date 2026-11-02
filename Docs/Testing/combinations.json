@@ -472,5 +472,30 @@
     "iPhone, light: builds, still the root page"
    ]
   ]
+ },
+ {
+  "run": "s1",
+  "date": "2026-11-02",
+  "model": "Qwen3-Coder-Next-REAP-48B-A3B",
+  "sketch": "on",
+  "window": "32k",
+  "wall": 1271,
+  "first": 66,
+  "agents": "5 / 1 / 1",
+  "hand": 0,
+  "in_agents": 1092,
+  "model_time": 180,
+  "compactions": "none",
+  "peak": "96%",
+  "stop": "loopLimit",
+  "build": "macOS: succeeded",
+  "checks": "room before the agents **fail** · compaction works — · the breath **fail** · no thrash —",
+  "entry": "### s1\n\n*2026-11-02 · Qwen3-Coder-Next-REAP-48B-A3B · sketch on · 32k window · Craft 5065474 · granite c49a312 · window 32k*\n\n**Prompt**:\n\n> Build a social app called Margin, like $loom with $granite: book clubs where readers post what they are reading and talk through chapters in threaded comments, with a feed, a post page with its thread, and profiles. Its API client and types come from $network, and believable data from $mocks until the server exists.\n\n**Time**: 1271 s in all; 1092 s inside agents, 180 s the model and Craft; first agent call at 66 s.\n\n**Calls** (offset s · duration s · result):\n\n- 66 · 0.8 · `granite` ok — granite com.example.margin\n- 106 · 0.0 · `network` **refused** — network bearer: network refused: `GET /v1/clubs` answers `ClubPage`, which no entity line declares: add its line\n- 140 · 1.7 · `network` ok — network bearer\n- 161 · 1088.7 · `mocks` ok — mocks\n- 1260 · 0.5 · `granite` ok — granite service\n\n0 reads, 5 calls in all.\n\n**Who wrote what**:\n\n- `granite`: 33 files — .gitignore, Components/Home/Home+Center.swift, Components/Home/Home+View.swift, Components/Home/Home.swift, Margin.xcodeproj/project.pbxproj, Margin.xcodeproj/project.xcworkspace/contents.xcworkspacedata, Margin.xcodeproj/xcshareddata/xcschemes/Margin-iOS.xcscheme, Margin.xcodeproj/xcshareddata/xcschemes/Margin-macOS.xcscheme …\n- `mocks`: 21 files — Packages/MarginKit/Sources/MarginKit/Mocks/Fixtures/ClubsFixture.swift, Packages/MarginKit/Sources/MarginKit/Mocks/Fixtures/CommentsFixture.swift, Packages/MarginKit/Sources/MarginKit/Mocks/Fixtures/CreateClubFixture.swift, Packages/MarginKit/Sources/MarginKit/Mocks/Fixtures/CreateCommentFixture.swift, Packages/MarginKit/Sources/MarginKit/Mocks/Fixtures/CreatePostFixture.swift, Packages/MarginKit/Sources/MarginKit/Mocks/Fixtures/PostsFixture.swift, Packages/MarginKit/Sources/MarginKit/Mocks/Fixtures/UpdateProfileFixture.swift, Packages/MarginKit/Sources/MarginKit/Mocks/Fixtures/UserCommentsFixture.swift …\n- `network`: 49 files — Margin.xcodeproj/project.pbxproj, Packages/MarginKit/Package.swift, Packages/MarginKit/Sources/MarginKit/Auth/AuthScheme.swift, Packages/MarginKit/Sources/MarginKit/Auth/KeychainTokenStore.swift, Packages/MarginKit/Sources/MarginKit/Auth/MemoryTokenStore.swift, Packages/MarginKit/Sources/MarginKit/Auth/TokenStore.swift, Packages/MarginKit/Sources/MarginKit/Coding/DateParsing.swift, Packages/MarginKit/Sources/MarginKit/Coding/MarginCoding.swift …\n- by hand: 0 files\n\n**Window**: peak 96% of 32k; compactions: none; checks: room before the agents **fail** · compaction works — · the breath **fail** · no thrash —\n\n**Stopped**: loopLimit: the context window is nearly full (32768 tokens)\n\n**Build**: macOS: succeeded\n\n**Notes**:\n- The stress variant: the combination prompt with a 32k window. The turn's first prompt was already 19.8k tokens (60%) before any work: the system prompt, the five required agents' guides, the retrieved context and the plan. Five rounds in (project, client, mocks) it reached 96% and closed; there was nothing to empty, since the space went to fixed text and agent answers, which compaction keeps.\n- Finding: at 32k the fixed prompt, mostly the agents' guides (granite's alone is 4,577 characters), leaves too little room for work. Compaction cannot help with it; shorter guides, or agents that need less said to them, can.\n",
+  "images": [
+   [
+    "s1.png",
+    "Outcome card for s1, the 32k stress run"
+   ]
+  ]
  }
 ]
