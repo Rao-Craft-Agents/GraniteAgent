@@ -273,6 +273,18 @@ final class ServiceTests: XCTestCase {
         try await Fixture.call(fixed, in: folder)
     }
 
+    /// An optional field filled by a call that answers the value itself builds: the closure's result is spelled out
+    /// (Margin, 2026-11-01: `cannot convert value of type 'User' to closure result type 'User?'`).
+    func testAnOptionalFieldTakesAValueTheCallAnswers() async throws {
+        let folder = try await app()
+        try "extension Recipe {\n    static func first() async throws -> Recipe { throw CancellationError() }\n}\n"
+            .write(to: folder.appendingPathComponent("Shared/RecipeFirst.swift"), atomically: true, encoding: .utf8)
+        let input = GraniteAppAgent.Input(make: .service, type: "Pick", state: ["pick Recipe?"], events: ["choose() -> pick = Recipe.first()"])
+        try await Fixture.call(input, in: folder)
+        let text = try read(folder, "Services/PickService/Reducers/PickService.Choose.swift")
+        XCTAssertTrue(text.contains("let value: Recipe? = try await PickService.lane.run { () async throws -> Recipe? in try await Recipe.first() }"), text)
+    }
+
     func testARelayThatWouldLoopIsRefused() async throws {
         let folder = try await app()
         try await Fixture.call(GraniteAppAgent.Input(make: .service, type: "Index", state: ["count Int = 0"],

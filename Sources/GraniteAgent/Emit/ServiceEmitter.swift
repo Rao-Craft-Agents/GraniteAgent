@@ -244,8 +244,13 @@ struct ServiceEmitter {
 
             lines += ["                    service.set(.loading(nil))", "                    await \(type).tickets.resolve(ticket, with: .done)"]
         case .replace(let field), .append(let field):
-            let marked = event.expression.map(Self.isLiteral) == true ? call : "try await \(call)"
-            lines.append("                    let value: \(spec.resultType(event) ?? "Void") = try await \(type).lane.run { \(marked) }")
+            let result = spec.resultType(event) ?? "Void"
+            var marked = event.expression.map(Self.isLiteral) == true ? call : "try await \(call)"
+            // An optional field filled by a call that answers the value itself: a generic closure does not promote it
+            // (`cannot convert value of type 'User' to closure result type 'User?'`, Margin 2026-11-01).
+            // A closure whose result is spelled out takes either the value or an optional of it.
+            if result.hasSuffix("?"), marked.hasPrefix("try await ") { marked = "() async throws -> \(result) in \(marked)" }
+            lines.append("                    let value: \(result) = try await \(type).lane.run { \(marked) }")
 
 
             if case .append = event.write {
