@@ -207,6 +207,20 @@ final class ServiceTests: XCTestCase {
         }
     }
 
+    /// A field granite does not take is refused, naming where it belongs, never dropped; a list written as one JSON string
+    /// is read as the list (Margin c5: events sent as `endpoints`, a service written with none, every page refused).
+    func testAFieldGraniteDoesNotTakeIsRefusedNotDropped() throws {
+        let misnamed = Data(#"{"make":"service","type":"Feed","endpoints":"[\"load(page Int) -> posts = MarginClient.posts(page: page)\"]"}"#.utf8)
+        XCTAssertThrowsError(try JSONDecoder().decode(GraniteAppAgent.Input.self, from: misnamed)) { error in
+            XCTAssertEqual("\(error)", "1 problem, so nothing was written:\n- `endpoints` is not one of granite's fields; what it holds goes in `events`")
+        }
+        let stringly = Data(#"{"make":"service","type":"Feed","events":"[\"load(page Int) -> posts = MarginClient.posts(page: page)\"]"}"#.utf8)
+        let input = try JSONDecoder().decode(GraniteAppAgent.Input.self, from: stringly)
+        XCTAssertEqual(input.events, ["load(page Int) -> posts = MarginClient.posts(page: page)"])
+        XCTAssertEqual(try JSONDecoder().decode(GraniteAppAgent.Input.self, from: Data(#"{"make":"service","state":"posts [Post] = []"}"#.utf8)).state,
+                       ["posts [Post] = []"], "one line is a list of one")
+    }
+
     /// A call to a client the project does not declare is refused, pointing to the agents that make one (Margin).
     func testACallToAClientThatDoesNotExistIsRefused() async throws {
         let folder = try await app()

@@ -74,6 +74,76 @@ public struct GraniteAppAgent: GraniteAgentPackage {
             self.packages = packages; self.imports = imports; self.persist = persist; self.notes = notes; self.rounds = rounds
             self.directory = directory
         }
+
+        private enum CodingKeys: String, CodingKey, CaseIterable {
+            case make, name, bundleId, team, type, into, state, events, relays, layout, shows, actions, views, body, destinations
+            case style, root, packages, imports, persist, notes, rounds, directory
+        }
+
+        /// Any key a call carries, to find the ones that are not fields.
+        private struct AnyKey: CodingKey {
+            var stringValue: String
+            var intValue: Int? { nil }
+            init(stringValue: String) { self.stringValue = stringValue }
+            init?(intValue: Int) { nil }
+        }
+
+        /// Fields a call writes under another agent's or another word's name, and where each belongs here.
+        static let misnamed: [String: String] = [
+            "endpoints": "events", "endpoint": "events", "reducers": "events", "work": "events", "methods": "events",
+            "fields": "state", "properties": "state", "entities": "state",
+            "routes": "destinations", "tabs": "destinations", "subviews": "views", "rows": "shows", "items": "shows",
+            "bundle": "bundleId", "bundleID": "bundleId", "folder": "into", "path": "into", "kind": "make",
+        ]
+
+        /// PIN: a field granite does not take is refused, never dropped. A service whose events came as `endpoints` (the
+        /// network agent's word) was written with no events and reported as written, and every page that called its work
+        /// was then refused for a `load` the call had meant to make (Margin c5, 2026-11-02).
+        ///
+        /// A list may come as one JSON-encoded string (`"[\"load(page Int) -> …\"]"`), as local models write it.
+        public init(from decoder: Decoder) throws {
+            let any = try decoder.container(keyedBy: AnyKey.self)
+            let known = Set(CodingKeys.allCases.map(\.rawValue))
+            let unknown = any.allKeys.map(\.stringValue).filter { !known.contains($0) }.sorted()
+            if !unknown.isEmpty {
+                throw GraniteError.refused(unknown.map { key in
+                    "`\(key)` is not one of granite's fields" + (Self.misnamed[key].map { "; what it holds goes in `\($0)`" }
+                        ?? " (" + CodingKeys.allCases.map(\.rawValue).filter { $0 != "directory" }.joined(separator: ", ") + ")")
+                })
+            }
+            let c = try decoder.container(keyedBy: CodingKeys.self)
+            make = try c.decode(GraniteMake.self, forKey: .make)
+            name = try c.decodeIfPresent(String.self, forKey: .name)
+            bundleId = try c.decodeIfPresent(String.self, forKey: .bundleId)
+            team = try c.decodeIfPresent(String.self, forKey: .team)
+            type = try c.decodeIfPresent(String.self, forKey: .type)
+            into = try c.decodeIfPresent(String.self, forKey: .into)
+            state = try Self.lines(c, .state)
+            events = try Self.lines(c, .events)
+            relays = try Self.lines(c, .relays)
+            layout = try c.decodeIfPresent(GraniteLayout.self, forKey: .layout)
+            shows = try Self.lines(c, .shows)
+            actions = try Self.lines(c, .actions)
+            views = try Self.lines(c, .views)
+            body = try c.decodeIfPresent(String.self, forKey: .body)
+            destinations = try Self.lines(c, .destinations)
+            style = try c.decodeIfPresent(GraniteStyle.self, forKey: .style)
+            root = try c.decodeIfPresent(String.self, forKey: .root)
+            packages = try Self.lines(c, .packages)
+            imports = try Self.lines(c, .imports)
+            persist = try c.decodeIfPresent(Bool.self, forKey: .persist)
+            notes = try c.decodeIfPresent(String.self, forKey: .notes)
+            rounds = try c.decodeIfPresent(Int.self, forKey: .rounds)
+            directory = try c.decodeIfPresent(String.self, forKey: .directory)
+        }
+
+        /// A list of lines: an array, or one string holding a JSON array of strings.
+        private static func lines(_ c: KeyedDecodingContainer<CodingKeys>, _ key: CodingKeys) throws -> [String]? {
+            if let list = try? c.decodeIfPresent([String].self, forKey: key) { return list }
+            guard let text = try c.decodeIfPresent(String.self, forKey: key) else { return nil }
+            if let data = text.data(using: .utf8), let list = try? JSONDecoder().decode([String].self, from: data) { return list }
+            return [text]
+        }
     }
 
     public typealias Event = GraniteFrame
