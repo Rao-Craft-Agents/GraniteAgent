@@ -972,6 +972,7 @@ auto-compaction checks are in each run's entry.
 | [c3c](#c3c) | 2026-11-01 | off · 64k | 1155 (458) | 66 | 18 / 4 / 2 | 5 | 99% · 0 | loopLimit | failed |
 | [c3d](#c3d) | 2026-11-01 | off · 64k | 1266 (734) | 40 | 15 / 6 / 4 | 3 | 96% · 0 | loopLimit | failed |
 | [c3e](#c3e) | 2026-11-01 | off · 64k | 1167 (791) | 63 | 13 / 4 / 3 | 1 | 103% · 0 | loopLimit | failed |
+| [c10](#c10) | 2026-11-02 | on · 64k | 1406 (6) | 199 | 10 / 4 / 3 | 5 | 81% · 3 | loopLimit | macOS: succeeded |
 | [c3f](#c3f) | 2026-11-02 | off · 64k | 1436 (763) | 41 | 24 / 14 / 5 | 0 | 106% · 0 | loopLimit | failed |
 | [c3g](#c3g) | 2026-11-02 | off · 64k | 1280 (764) | 69 | 15 / 5 / 5 | 1 | 106% · 0 | loopLimit | failed |
 | [c4](#c4) | 2026-11-02 | off · 64k | 597 (1) | 86 | 2 / 1 / 1 | 13 | 96% · 0 | loopLimit | failed |
@@ -1495,6 +1496,66 @@ auto-compaction checks are in each run's entry.
 
 ![Outcome card for c3e](Docs/Testing/l3-c3e-c3e.png)
 *Outcome card for c3e*
+
+### c10
+
+*2026-11-02 · Qwen3-Coder-Next-REAP-48B-A3B · sketch on · 64k window · Craft 5065474 · granite c49a312*
+
+**Prompt**:
+
+> Now give Margin its pages with $granite, in this order: first give FeedService the work of loading a page of posts from MarginClient; then a Feed page that shows FeedService's posts in loom's FeedView and loads them when it appears, a Post page with its thread, and a Profile page; then navigation with Feed and Profile as tabs.
+
+**Time**: 1406 s in all; 6 s inside agents, 1400 s the model and Craft; first agent call at 199 s.
+
+**Calls** (offset s · duration s · result):
+
+- 166 · 0.0 · `edit_file` ok — Services/FeedService/Ops/FeedOps.swift
+- 199 · 0.3 · `granite` **refused** — granite: granite refused: `more`: `posts(page:cursor:)` takes no labels of its declarations: it is `posts(page:limit:)`
+- 207 · 0.8 · `granite` ok — granite
+- 337 · 0.0 · `edit_file` ok — Shared/Views/Social/SocialPhase.swift
+- 571 · 0.0 · `edit_file` ok — Tests/PostOpsTests.swift
+- 593 · 0.0 · `edit_file` ok — Tests/UserOpsTests.swift
+- 659 · 0.0 · `edit_file` ok — Tests/FeedOpsTests.swift
+- 668 · 0.0 · `edit_file` ok — Tests/PostOpsTests.swift
+- 678 · 0.0 · `edit_file` ok — Tests/UserOpsTests.swift
+- 713 · 0.8 · `granite` ok — granite
+- 786 · 0.3 · `granite` **refused** — granite detail: granite refused: `Post` is MarginKit's type: name the page something else, like `PostPage`
+- 792 · 0.3 · `granite` **refused** — granite detail: granite refused: `PostPage` is MarginKit's type: name the page something else, like `PostDetail`
+- 799 · 0.8 · `granite` ok — granite detail
+- 806 · 0.8 · `granite` ok — granite detail
+- 812 · 1.3 · `granite` ok — granite
+- 876 · 0.3 · `granite` **refused** — granite service: granite refused: FeedService already does `loadPage` (Services/FeedService/Reducers/FeedService.LoadPage.swift): keep its line in `events`, or delete that file 
+- 892 · 0.8 · `granite` ok — granite
+- 1036 · 0.0 · `edit_file` ok — Tests/FeedOpsTests.swift
+
+33 reads, 68 calls in all.
+
+**Who wrote what**:
+
+- `granite`: 31 files — Components/Feed/Feed+Actions.swift, Components/Feed/Feed+Center.swift, Components/Feed/Feed+View.swift, Components/Feed/Feed.swift, Components/Feed/Views/Feed.RowView.swift, Components/Home/Home+View.swift, Components/PostDetail/PostDetail+Center.swift, Components/PostDetail/PostDetail+View.swift …
+- by hand: 5 files — Services/FeedService/Ops/FeedOps.swift, Shared/Views/Social/SocialPhase.swift, Tests/FeedOpsTests.swift, Tests/PostOpsTests.swift, Tests/UserOpsTests.swift
+
+**Window**: peak 81% of 64k; compactions: atAgentCall 50k→42k, atAgentCall 53k→25k, atAgentCall 41k→29k; checks: room before the agents pass · compaction works — · the breath pass · no thrash pass; 2 re-reads after the first compaction
+
+**Stopped**: loopLimit: out of tool rounds (50)
+
+**Build**: macOS: succeeded
+
+**Notes**:
+- The prompt pattern: c4's request worded in the order the work has to happen (the service's work, then the pages, then navigation). granite gave FeedService its work, then made the Feed, Post and Profile pages and the tab navigation; every refusal (a mislabelled call, two page names MarginKit already uses, a reducer already there) was corrected on the next call. The model's own edits were tests and one view.
+- First run where granite made everything the request asked for and the app builds and draws its data.
+
+![Outcome card for c10](Docs/Testing/l3-c10-c10.png)
+*Outcome card for c10*
+
+![iPhone, light, mock data (-mock YES): the Feed draws the mock book-club posts](Docs/Testing/l3-c10-c10-feed-mock-light.png)
+*iPhone, light, mock data (-mock YES): the Feed draws the mock book-club posts*
+
+![iPhone, dark, mock data](Docs/Testing/l3-c10-c10-feed-mock-dark.png)
+*iPhone, dark, mock data*
+
+![iPhone, light, against the real server: the page's own error state](Docs/Testing/l3-c10-c10-feed-light.png)
+*iPhone, light, against the real server: the page's own error state*
 
 ### c3f
 
