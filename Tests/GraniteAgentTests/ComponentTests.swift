@@ -199,6 +199,21 @@ final class ComponentTests: XCTestCase {
         XCTAssertFalse(FileManager.default.fileExists(atPath: folder.appendingPathComponent("Components/Pantry").path))
     }
 
+    /// A body that makes a view no one has, or awaits work the page does not have, is asked for again with the reason
+    /// (Margin, 2026-11-01: `Spinner()` and `await refresh()` on a page without one).
+    func testABodyWithNamesNoOneHasIsAskedForAgain() async throws {
+        let folder = try await app()
+        let model = FakeHostModel(bodies: ["VStack {\n    Spinner()\n}\n.task { try? await refresh() }",
+                                           "VStack {\n    ProgressView()\n    KitchenNoteView(text: \"Hi\")\n}\n.task { try? await load() }"])
+        let input = GraniteAppAgent.Input(make: .component, type: "Kitchen", relays: ["recipes: RecipesService"], layout: .blank,
+                                          actions: ["load = try await recipes.load(page: 1)"], views: ["note(text String)"], notes: "a kitchen page")
+        try await Fixture.call(input, in: folder, model: model)
+        XCTAssertEqual(model.asked.count, 2, "asked again once")
+        let again = model.asked[1].user
+        XCTAssertTrue(again.contains("`Spinner` is not a view SwiftUI or this app has") && again.contains("`refresh()` is not one of the page's actions (it has `load()`)"), again)
+        XCTAssertTrue(try read(folder, "Components/Kitchen/Kitchen+View.swift").contains("ProgressView()"))
+    }
+
     func testAPageItCannotDrawIsRefusedWithEveryReason() async throws {
         let folder = try await app()
         let input = GraniteAppAgent.Input(make: .component, type: "FeedComponent", relays: ["feed: FeedService"], layout: .threePane,

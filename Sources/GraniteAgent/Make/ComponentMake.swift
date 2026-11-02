@@ -141,7 +141,7 @@ struct ComponentMake {
             if let description = view.description, let asker {
                 note("asking for \(spec.viewType(view))'s body")
                 let (body, rounds) = try await asker.ask(spec.viewType(view), system: BodyPrompts.view, user: Self.viewPrompt(view, spec: spec, description: description, notes: input.notes),
-                                                          file: { subviews.file(view, body: $0) }, check: { _ in [] })
+                                                          file: { subviews.file(view, body: $0) }, check: { Self.unknownNames(in: $0, spec: spec, view: view) })
                 spec.bodies[view.role] = body
                 yield(.asked(type: spec.viewType(view), rounds: rounds))
             } else if view.description != nil {
@@ -164,7 +164,7 @@ struct ComponentMake {
                                                           var probe = spec
                                                           probe.bodies["content"] = body
                                                           return ComponentLayouts(emitter: ComponentEmitter(spec: probe, inputs: inputs)).view()
-                                                      }, check: { _ in [] })
+                                                      }, check: { Self.unknownNames(in: $0, spec: spec, view: nil) })
             spec.bodies["content"] = body
             yield(.asked(type: type, rounds: rounds))
 
@@ -235,6 +235,45 @@ struct ComponentMake {
         if !shapes.isEmpty { lines.append("The app's types it names, as declared (use exactly these initializers, cases and members):\n" + shapes) }
         lines.append("Write the body, for this app, in its own names.")
         return lines.joined(separator: "\n")
+    }
+
+    /// SwiftUI's and Foundation's types a body is likely to make, beside the app's own.
+    static let knownTypes: Set<String> = [
+        "Text", "Image", "Label", "Button", "Link", "Menu", "Toggle", "Picker", "Slider", "Stepper", "TextField", "SecureField",
+        "TextEditor", "DatePicker", "ColorPicker", "ProgressView", "Gauge", "VStack", "HStack", "ZStack", "LazyVStack", "LazyHStack",
+        "LazyVGrid", "LazyHGrid", "Grid", "GridRow", "GridItem", "List", "ForEach", "Section", "Form", "Group", "GroupBox", "ScrollView",
+        "ScrollViewReader", "GeometryReader", "Spacer", "Divider", "Color", "LinearGradient", "RadialGradient", "AngularGradient",
+        "Rectangle", "RoundedRectangle", "Circle", "Capsule", "Ellipse", "UnevenRoundedRectangle", "AsyncImage", "NavigationStack",
+        "NavigationLink", "NavigationSplitView", "TabView", "ContentUnavailableView", "ShareLink", "EmptyView", "AnyView", "ViewThatFits",
+        "Font", "Edge", "EdgeInsets", "CGSize", "CGFloat", "CGPoint", "Angle", "Animation", "Binding", "LocalizedStringKey",
+        "String", "Int", "Double", "Bool", "Date", "URL", "UUID", "Array", "Dictionary", "Set", "Optional", "Task", "Text.DateStyle",
+        "Material", "ShapeStyle", "AnyShapeStyle", "RelativeDateTimeFormatter", "DateFormatter", "NumberFormatter", "Calendar",
+    ]
+
+    /// Names a body uses that neither SwiftUI nor the app has: a view it makes (`Spinner()`), or work it awaits that
+    /// is not one of the page's actions (`await refresh()` on a page with no refresh). Margin, 2026-11-01: bodies
+    /// made a `Spinner` and awaited a `refresh` the page did not have, and did not build.
+    static func unknownNames(in body: String, spec: ComponentSpec, view: ViewSpec?) -> [String] {
+        var problems: [String] = []
+        // The app's types, and what this call makes: the page and its subviews.
+        let declared = spec.index.declared.union(spec.index.shapes.keys).union(spec.views.map { spec.viewType($0) }).union([spec.type])
+        var made: [String] = []
+        for name in body.matches(#"(?<![\w.])([A-Z][A-Za-z0-9_]*)\s*(?:<[^>]*>)?\s*\("#) where !made.contains(name) {
+            if !knownTypes.contains(name) && !declared.contains(name) { made.append(name) }
+        }
+        if !made.isEmpty {
+            problems.append(made.map { "`\($0)`" }.joined(separator: ", ") + " \(made.count == 1 ? "is" : "are") not a view SwiftUI or this app has: use one that is (ProgressView for a spinner)")
+        }
+        if view == nil {
+            let actions = Set(spec.actions.map { SwiftName.member($0.name) })
+            var awaited: [String] = []
+            for name in body.matches(#"await\s+([a-z]\w*)\s*\("#) where !actions.contains(name) && !awaited.contains(name) { awaited.append(name) }
+            if !awaited.isEmpty {
+                problems.append(awaited.map { "`\($0)()`" }.joined(separator: ", ") + " is not one of the page's actions"
+                                + (actions.isEmpty ? "" : " (it has " + actions.sorted().map { "`\($0)()`" }.joined(separator: ", ") + ")"))
+            }
+        }
+        return problems
     }
 
     /// The shapes of the app's types `text` names, and of the types those shapes name in turn: a page that
