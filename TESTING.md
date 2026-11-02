@@ -205,3 +205,111 @@ Give Hearth its services with $granite, each working through HearthKit's HearthC
 - Its first Feed call held `client: HearthClient` as a relay. Refused with "`HearthClientService` is not in the project: make it first", the model made an empty HearthClientService that nothing uses.
 - Each `-> posts = HearthClient.current.posts(…)` was written into a reducer typed `[Post]` around a call answering `PostPage`; Craft's build failed, and the model rewrote six reducers by hand until its context filled.
 - Fixed in the next release: link finds the boot tests by what they hold, a relay to a type that is not a service is refused as "called, not relayed", and a call answering an envelope is read for the field's list (`.posts`) with a note saying so. The same prompt was run again (entry 3).
+
+### 3. The same prompt, with envelopes read and clients not relayed (cd951ed)
+
+*2026-11-01 · Qwen3-Coder-Next-REAP-48B-A3B-mlx-4bit · 596 s*
+
+**The prompt**, verbatim:
+
+```text
+Give Hearth its services with $granite, each working through HearthKit's HearthClient.current: a FeedService that keeps the feed's posts and its sort (hot, new or top), loads the first page, appends the next one, and votes on and saves a post; a ThreadService that loads a post's comments a page at a time; a CommunitiesService that keeps the communities and loads them; and a SessionService that signs in with a username and password, keeps the signed-in person, and signs out.
+```
+
+**The call the model wrote** to `granite`:
+
+```json
+{
+  "events": [
+    "load(page Int, sort String) -> posts = HearthClient.current.postsPages(from: page, sort: sort) \"loads the feed\""
+  ],
+  "into": "Services/FeedService",
+  "make": "service",
+  "name": "Hearth",
+  "persist": true,
+  "state": [
+    "posts [Post] = []",
+    "sort String = \"hot\"",
+    "page Int = 1",
+    "loading Bool = false"
+  ],
+  "type": "Feed"
+}
+```
+
+**The call the model wrote** to `granite`:
+
+```json
+{
+  "events": [
+    "load(postID Int, page Int) -> comments = HearthClient.current.commentsPages(from: page, id: postID) \"loads a post's comments\""
+  ],
+  "into": "Services/ThreadService",
+  "make": "service",
+  "name": "Hearth",
+  "persist": false,
+  "state": [
+    "comments [Comment] = []",
+    "postID Int = 0",
+    "page Int = 1",
+    "loading Bool = false"
+  ],
+  "type": "Thread"
+}
+```
+
+**The call the model wrote** to `granite`:
+
+```json
+{
+  "events": [
+    "load(page Int) -> communities = HearthClient.current.communitiesPages(from: page) \"loads the communities\""
+  ],
+  "into": "Services/CommunitiesService",
+  "make": "service",
+  "name": "Hearth",
+  "persist": true,
+  "state": [
+    "communities [Community] = []",
+    "page Int = 1",
+    "loading Bool = false"
+  ],
+  "type": "Communities"
+}
+```
+
+**The call the model wrote** to `granite`:
+
+```json
+{
+  "events": [
+    "signIn(credentials Credentials) -> user = HearthClient.current.signIn(credentials) \"signs in with username and password\"",
+    "signOut = HearthClient.current.signOut() \"signs out\""
+  ],
+  "into": "Services/SessionService",
+  "make": "service",
+  "name": "Hearth",
+  "persist": true,
+  "state": [
+    "user User? = nil",
+    "credentials Credentials = Credentials(username: \"\", password: \"\")",
+    "loading Bool = false"
+  ],
+  "type": "Session"
+}
+```
+
+**What `granite` wrote** (29 files): `Services/FeedService/FeedService.swift`, `Services/FeedService/FeedService+Center.swift`, `Services/FeedService/Reducers/FeedService.Set.swift`, `Services/FeedService/Reducers/FeedService.Load.swift`, `Services/FeedService/Ops/FeedOps.swift`, `Tests/FeedOpsTests.swift`, `Shared/Utility/AppRoot.swift`, `Services/ThreadService/ThreadService.swift`, `Services/ThreadService/ThreadService+Center.swift`, `Services/ThreadService/Reducers/ThreadService.Set.swift`, `Services/ThreadService/Reducers/ThreadService.Load.swift`, `Services/ThreadService/Ops/ThreadOps.swift`, `Tests/ThreadOpsTests.swift`, `Shared/Utility/AppRoot.swift`, `Services/CommunitiesService/CommunitiesService.swift`, `Services/CommunitiesService/CommunitiesService+Center.swift`, `Services/CommunitiesService/Reducers/CommunitiesService.Set.swift`, `Services/CommunitiesService/Reducers/CommunitiesService.Load.swift`, `Services/CommunitiesService/Ops/CommunitiesOps.swift`, `Tests/CommunitiesOpsTests.swift`, `Shared/Utility/AppRoot.swift`, `Services/SessionService/SessionService.swift`, `Services/SessionService/SessionService+Center.swift`, `Services/SessionService/Reducers/SessionService.Set.swift`, `Services/SessionService/Reducers/SessionService.SignIn.swift`, `Services/SessionService/Reducers/SessionService.SignOut.swift`, `Services/SessionService/Ops/SessionOps.swift`, `Tests/SessionOpsTests.swift`, `Shared/Utility/AppRoot.swift`
+
+**What the model changed itself**: `Services/FeedService/FeedService.swift`, `Services/SessionService/SessionService.swift`, `Services/CommunitiesService/CommunitiesService.swift`, `Services/ThreadService/ThreadService.swift`, `Services/FeedService/Reducers/FeedService.Load.swift`, `Services/SessionService/Reducers/SessionService.SignIn.swift`, `Services/SessionService/Reducers/SessionService.SignOut.swift`, `Services/CommunitiesService/Reducers/CommunitiesService.Load.swift`, `Services/ThreadService/Reducers/ThreadService.Load.swift`
+
+**Verified by hand**:
+- The macOS scheme does not build: `cannot convert value of type 'Session' to closure result type 'User?'`, and FeedService and ThreadService no longer conform after the model's edits.
+
+![The turn: four clean calls, then answers the fields could not hold, and a build that fails](Docs/Testing/3-6b-services.png)
+*The turn: four clean calls, then answers the fields could not hold, and a build that fails*
+
+**Notes**:
+- No project or link calls this time, and no relay to the client: four calls, one a service.
+- The model picked other calls: `postsPages(from:)` (a `Pages<Post>` sequence) into `[Post]`, `signIn` (a `Session`) into `User?`, and a `signOut()` HearthKit does not have. It also left out the append, vote and save work the prompt asked for. Granite wrote what it was given; the model's nine edits did not fix the build before its context filled.
+- Fixed in the next release: a call whose answer the index knows and which cannot fill the field is refused, naming the calls whose answer can (`posts(…)` answers `PostPage`, read for its `.posts`). The same prompt was run a third time (entry 4).

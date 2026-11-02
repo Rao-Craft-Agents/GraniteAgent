@@ -158,6 +158,34 @@ final class ServiceTests: XCTestCase {
                      "a call that already answers the field's type is kept")
     }
 
+    /// A call whose answer cannot fill the field is refused, with the calls whose answer can (Hearth, 2026-11-01).
+    func testACallWhoseAnswerCannotFillTheFieldIsRefused() async throws {
+        let folder = try await app()
+        try """
+        public struct ShelfPage: Codable {
+            public var recipes: [Recipe]
+            public var total: Int
+        }
+
+        public struct Shelves<Item> {}
+
+        public enum PantryAPI {
+            public static func shelf(_ page: Int) async throws -> ShelfPage { ShelfPage(recipes: [], total: 0) }
+            public static func shelves(from page: Int) -> Shelves<Recipe> { Shelves() }
+        }
+        """.write(to: folder.appendingPathComponent("Shared/PantryAPI.swift"), atomically: true, encoding: .utf8)
+        let input = GraniteAppAgent.Input(make: .service, type: "Recipes", state: ["recipes [Recipe] = []"],
+                                          events: ["load(page Int) -> recipes = PantryAPI.shelves(from: page)"])
+        do {
+            try await Fixture.call(input, in: folder)
+            XCTFail("the call is refused")
+        } catch {
+            let text = "\(error)"
+            XCTAssertTrue(text.contains("`load`: `shelves(…)` answers `Shelves<Recipe>`, and `recipes` holds `[Recipe]`"), text)
+            XCTAssertTrue(text.contains("`shelf(…)` answers `ShelfPage`, read for its `.recipes`"), text)
+        }
+    }
+
     func testARelayThatWouldLoopIsRefused() async throws {
         let folder = try await app()
         try await Fixture.call(GraniteAppAgent.Input(make: .service, type: "Index", state: ["count Int = 0"],

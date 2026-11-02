@@ -67,6 +67,12 @@ struct ServiceMake {
             events[position].expression = expression.trimmingCharacters(in: .whitespaces) + "." + read.member
             unwrapped.append("`\(events[position].verb)` reads `.\(read.member)` of the \(read.answer) that `\(read.method)(…)` answers")
         }
+        // A call whose answer the index knows, and which cannot fill the field, is refused with the calls that can.
+        for event in events {
+            guard let name = event.write.field, let field = fields.first(where: { $0.name == name }),
+                  let expression = event.expression, let problem = Self.misfit(expression, field: field, index: index) else { continue }
+            problems.append("`\(event.verb)`: " + problem)
+        }
         var relays: [Relay] = []
         for line in input.relays ?? [] where !line.trimmingCharacters(in: .whitespaces).isEmpty {
             do {
@@ -198,6 +204,30 @@ struct ServiceMake {
         return (fitting[0].name, answer, method)
     }
 
+    /// Why `expression` cannot fill `field`, when the index knows what its function answers and the answer is neither
+    /// the field's type nor an envelope of it; with the functions whose answer can (Hearth, 2026-11-01: a `Pages<Post>`
+    /// sequence and a `Session` written into `[Post]` and `User?` fields did not build).
+    static func misfit(_ expression: String, field: Field, index: ProjectIndex) -> String? {
+        let call = expression.trimmingCharacters(in: .whitespaces)
+        guard call.hasSuffix(")"), let method = Self.method(of: call), let answers = index.returns[method], answers.count == 1,
+              let answer = answers.first else { return nil }
+        let wanted = "\(field.type)"
+        guard Self.plain(answer) != Self.plain(wanted), Self.unwrap(call, into: wanted, index: index) == nil else { return nil }
+        var fitting: [String] = []
+        for (other, types) in index.returns.sorted(by: { $0.key < $1.key }) where types.count == 1 && other != method {
+            let type = types.first!
+            if Self.plain(type) == Self.plain(wanted) {
+                fitting.append("`\(other)(…)` answers `\(type)`")
+            } else if let info = index.types[Self.plain(type)], let member = info.fields.first(where: { Self.plain($0.type) == Self.plain(wanted) }),
+                      info.fields.filter({ Self.plain($0.type) == Self.plain(wanted) }).count == 1 {
+                fitting.append("`\(other)(…)` answers `\(type)`, read for its `.\(member.name)`")
+            }
+        }
+        let offer = fitting.isEmpty ? "write the work in `notes` instead, or hold the answer in a field of its type"
+            : "call one that does: " + fitting.prefix(3).joined(separator: "; ")
+        return "`\(method)(…)` answers `\(answer)`, and `\(field.name)` holds `\(wanted)`: \(offer)"
+    }
+
     /// The function a call ends in: `posts` in `HearthClient.current.posts(page: page)`.
     static func method(of call: String) -> String? {
         var depth = 0
@@ -217,6 +247,8 @@ struct ServiceMake {
     static func plain(_ type: String) -> String {
         var text = type.replacingOccurrences(of: " ", with: "")
         while text.hasSuffix("?") || text.hasSuffix("!") { text.removeLast() }
+        if text.hasPrefix("Optional<"), text.hasSuffix(">") { text = String(text.dropFirst(9).dropLast()) }
+        if text.hasPrefix("Array<"), text.hasSuffix(">") { text = "[" + text.dropFirst(6).dropLast() + "]" }
         return text
     }
 
