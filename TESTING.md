@@ -755,3 +755,91 @@ Make Hearth's first pages with $granite: a Feed page that shows FeedService's po
 **Notes**:
 - The model never called granite: the guide did not say how a page shows a view the app already has (loom's FeedView), and the model wrote the pages itself. Craft's hold for a required agent did not act, since its stop on repeated calls is not a finished reply.
 - Fixed in the next release: the guide says such a page is `layout: blank`, its view and how to fill it named in `notes`. The next prompt asks for one page (entry 8).
+
+### 8. Hearth's Feed page asked alone, in plain words (a837e90)
+
+*2026-11-01 · Qwen3-Coder-Next-REAP-48B-A3B-mlx-4bit · 180 s*
+
+**The prompt**, verbatim:
+
+```text
+With $granite, make Hearth's Feed page: it shows FeedService's posts in loom's FeedView, refreshes, loads more as I scroll, and votes on and saves a post.
+```
+
+![No call to granite; Craft stopped the turn on repeated calls](Docs/Testing/8-8c-feed.png)
+*No call to granite; Craft stopped the turn on repeated calls*
+
+**Notes**:
+- Narrowed to one page, the prompt still drew no call: the model read the project, Feed's service and loom's FeedView, then repeated one command until Craft stopped it.
+
+### 9. The Feed page spelled out the way granite takes it (a837e90)
+
+*2026-11-01 · Qwen3-Coder-Next-REAP-48B-A3B-mlx-4bit · 458 s*
+
+**The prompt**, verbatim:
+
+```text
+With $granite, make Hearth's Feed page as a blank page that relays feed: FeedService, with a refresh action that runs try await feed.loadFirstPage() and a more action that runs try await feed.loadMore(). Its body is loom's FeedView<AppSocial, EmptyView>(title: Text("Feed"), posts: feed.state.feedPosts, phase: feed.state.loading == nil ? .idle : .loading, actions: actions), where actions is a SocialActions<AppSocial> whose refresh and loadMore run those actions, and whose vote and save, given a .post(post) target, call feed.vote(post: post, action: "up") and feed.save(post: post). Load the first page when the page appears.
+```
+
+**What the model changed itself**: `Components/Feed/Feed.swift`, `Components/Feed/Feed+View.swift`
+
+**Verified by hand**:
+- The macOS scheme does not build: the hand-written Feed is not a GraniteComponent.
+
+![No call to granite; a hand-written page that does not build](Docs/Testing/9-8d-feed.png)
+*No call to granite; a hand-written page that does not build*
+
+**Notes**:
+- Even named as a blank page with its relay, actions and body, the page was written by hand: Craft's sketch planned "define FeedPage struct… implement body…" and the model followed the plan, not the tag.
+
+### 10. The plain Feed prompt with Craft's sketch turned off (a837e90)
+
+*2026-11-01 · Qwen3-Coder-Next-REAP-48B-A3B-mlx-4bit · 367 s*
+
+**The prompt**, verbatim:
+
+```text
+With $granite, make Hearth's Feed page: it shows FeedService's posts in loom's FeedView, refreshes, loads more as I scroll, and votes on and saves a post.
+```
+
+**The call the model wrote** to `granite`:
+
+```json
+{
+  "actions": [
+    "refresh = try await feed.loadFirstPage()",
+    "more = try await feed.loadMore()",
+    "vote(post Post, action String) = try await feed.vote(post: post, action: action)",
+    "save(post Post) = try await feed.save(post: post)"
+  ],
+  "into": "Components",
+  "layout": "blank",
+  "make": "component",
+  "notes": "Feed page showing posts from FeedService with loom's FeedView. Implements refresh, load more on scroll, voting and saving posts.",
+  "relays": [
+    "feed: FeedService"
+  ],
+  "shows": [
+    "posts = feed.state.feedPosts",
+    "title = \"Front Page\"",
+    "subtitle = \"kitchen.social\"",
+    "empty = \"No posts yet\""
+  ],
+  "type": "Feed"
+}
+```
+
+**What `granite` wrote** (4 files): `Components/Feed/Feed.swift`, `Components/Feed/Feed+Center.swift`, `Components/Feed/Feed+View.swift`, `Components/Feed/Feed+Actions.swift`
+
+**What the model changed itself**: `Components/Feed/Feed+View.swift`, `Components/Feed/Feed+Actions.swift`
+
+**Verified by hand**:
+- The macOS scheme does not build: the page's body reads `target.post` (an enum case) and passes a String where `SocialVote` is asked.
+
+![Granite called first; a body that did not know the views' API](Docs/Testing/10-8e-feed.png)
+*Granite called first; a body that did not know the views' API*
+
+**Notes**:
+- With the sketch off (`/sketch`), the model called granite before anything else, as a blank page with its relay, actions and notes: the sketch was what kept it from calling.
+- The host's model wrote the body without SocialActions', SocialTarget's or FeedView's declarations. Fixed in the next release: a blank page is asked for with the shapes of the types its notes and shows name (initializers, cases, stored fields, and the types those name), and with the page's own functions as written, never to be declared again.

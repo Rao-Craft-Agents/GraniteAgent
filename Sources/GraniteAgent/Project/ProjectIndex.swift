@@ -47,6 +47,9 @@ struct ProjectIndex {
     var modules: [String: String] = [:]
     /// What each function answers, by its name, as declared anywhere: a client's `posts(page:)` answers `PostPage`.
     var returns: [String: Set<String>] = [:]
+    /// Each type's shape as written: its declaration, its initializers, its cases and its stored fields, one line
+    /// each. A page's body is asked for with the shapes of the views it shows (`FeedView`, `SocialActions`).
+    var shapes: [String: [String]] = [:]
 
 
     /// Every type declared anywhere, by name.
@@ -106,6 +109,7 @@ struct ProjectIndex {
             if let module = Self.module(of: url) { modules[name] = module }
             let line = text[..<nameRange.lowerBound].components(separatedBy: "\n").count - 1
 
+            if shapes[name] == nil { shapes[name] = Self.shape(of: lines, from: line, indent: indent) }
             var info = TypeInfo(name: name, kind: kind, conformances: conformances)
             let (fields, cases, hasTitle) = Self.members(of: lines, from: line, indent: indent)
             info.fields = fields; info.cases = cases; info.hasTitle = hasTitle
@@ -147,6 +151,37 @@ struct ProjectIndex {
         guard let sources = parts.lastIndex(of: "Sources"), sources + 1 < parts.count - 1,
               FileManager.default.fileExists(atPath: NSString.path(withComponents: Array(parts[..<sources])) + "/Package.swift") else { return nil }
         return parts[sources + 1]
+    }
+
+    /// The shape of the type whose declaration is on `line`: the declaration up to its `{`, then one level in each
+    /// initializer's signature (on any number of lines), each case and each stored field, as written.
+    static func shape(of lines: [String], from line: Int, indent: Int) -> [String] {
+        var shape = [lines[line].components(separatedBy: "{")[0].trimmingCharacters(in: .whitespaces)]
+        let inner = String(repeating: " ", count: indent + 4)
+        var index = line + 1
+        while index < lines.count {
+            let text = lines[index]
+            if text.hasPrefix(String(repeating: " ", count: indent) + "}") && !text.hasPrefix(inner) { break }
+            if text.hasPrefix(inner), !text.hasPrefix(inner + " ") {
+                let body = String(text.dropFirst(inner.count)).replacingOccurrences(of: "public ", with: "")
+                if body.hasPrefix("case ") || Self.storedField(body) != nil {
+                    shape.append(body.trimmingCharacters(in: .whitespaces))
+                } else if body.range(of: #"^(?:@\w+ )*(?:convenience )?init[?!]?\("#, options: .regularExpression) != nil {
+                    var signature = body, depth = 0, cursor = index
+                    func balance(_ text: String) -> Int { text.filter { $0 == "(" }.count - text.filter { $0 == ")" }.count }
+                    depth = balance(body)
+                    while depth > 0, cursor + 1 < lines.count {
+                        cursor += 1
+                        signature += " " + lines[cursor].trimmingCharacters(in: .whitespaces)
+                        depth += balance(lines[cursor])
+                    }
+                    shape.append(signature.components(separatedBy: "{")[0].trimmingCharacters(in: .whitespaces))
+                    index = cursor
+                }
+            }
+            index += 1
+        }
+        return shape
     }
 
     /// The stored fields, cases and `title` of the type whose declaration is on `line`: what sits one level in.

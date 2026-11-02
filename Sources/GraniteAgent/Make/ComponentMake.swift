@@ -227,6 +227,30 @@ struct ComponentMake {
         return lines.joined(separator: "\n")
     }
 
+    /// The shapes of the app's types `text` names, and of the types those shapes name in turn: a page that
+    /// shows `FeedView` is told its initializer, `SocialActions`' closures and `SocialTarget`'s cases (Hearth,
+    /// 2026-11-01: a body written without them read `target.post` and passed a String for a `SocialVote`).
+    static func shapes(named text: String, index: ProjectIndex, budget: Int = 3_600) -> String {
+        func words(_ text: String) -> [String] {
+            var seen: [String] = []
+            for match in text.matches(#"\b([A-Z][A-Za-z0-9_]*)\b"#) where index.shapes[match] != nil && !seen.contains(match) { seen.append(match) }
+            return seen
+        }
+        var names = words(text), next = 0
+        // The types those shapes name, and theirs in turn: FeedView names SocialActions, which names SocialTarget.
+        while next < names.count, names.count < 12 {
+            for more in words((index.shapes[names[next]] ?? []).joined(separator: " ")) where !names.contains(more) { names.append(more) }
+            next += 1
+        }
+        var out: [String] = [], used = 0
+        for name in names {
+            let block = (index.shapes[name] ?? []).enumerated().map { $0.offset == 0 ? $0.element : "    " + $0.element }.joined(separator: "\n")
+            guard used + block.count <= budget else { continue }
+            out.append(block); used += block.count
+        }
+        return out.joined(separator: "\n")
+    }
+
     static func pagePrompt(_ spec: ComponentSpec, notes: String?) -> String {
         var lines: [String] = []
         for relay in spec.relays {
@@ -238,11 +262,16 @@ struct ComponentMake {
         for view in spec.views {
             lines.append("Subview: \(spec.viewType(view))(\(view.values.map { "\($0.name): \($0.type)" }.joined(separator: ", ")))")
         }
-        for action in spec.actions {
-            lines.append("Action: \(action.name)(\(action.params.map { "\($0.name): \($0.type)" }.joined(separator: ", "))) async throws")
+        if !spec.actions.isEmpty {
+            lines.append("The page's own functions, in \(spec.type)+Actions.swift: call them as they are, never declare them again:")
+            for action in spec.actions {
+                lines.append("  func \(SwiftName.member(action.name))(\(action.params.map { "\(SwiftName.member($0.name)): \($0.type)" }.joined(separator: ", "))) async throws")
+            }
         }
         for show in spec.shows { lines.append("Shows: \(show.role ?? "row") = \(show.expression)") }
         lines.append("What it shows: \(notes ?? SwiftName.title(spec.type))")
+        let shapes = Self.shapes(named: (notes ?? "") + " " + spec.shows.map(\.expression).joined(separator: " "), index: spec.index)
+        if !shapes.isEmpty { lines.append("The app's types it names, as declared (use exactly these initializers, cases and members):\n" + shapes) }
         lines.append("Write the body, for this app, in its own names.")
         return lines.joined(separator: "\n")
     }

@@ -133,6 +133,47 @@ final class ComponentTests: XCTestCase {
         XCTAssertTrue(try read(folder, "Components/Today/Today+View.swift").contains("private var content: some View {\n        List(recipes.state.recipes) { recipe in"))
     }
 
+    /// A blank page that shows a view the app has is asked for with that view's shape, the shapes it names in turn,
+    /// and the page's own functions as written (Hearth, 2026-11-01: a body written without them read `target.post`,
+    /// passed a String for a vote, and declared the page's actions a second time).
+    func testABlankPageIsAskedForWithTheShapesOfTheViewsItShows() async throws {
+        let folder = try await app()
+        try """
+        import SwiftUI
+
+        enum DishTarget {
+            case dish(Recipe)
+            case cook(String)
+        }
+
+        struct DishActions {
+            var favor: ((DishTarget) -> Void)?
+            var refresh: (() async -> Void)?
+        }
+
+        struct DishFeed: View {
+            let dishes: [Recipe]
+            init(title: Text? = nil,
+                 dishes: [Recipe],
+                 actions: DishActions = DishActions()) {
+                self.dishes = dishes
+            }
+            var body: some View { Text("") }
+        }
+        """.write(to: folder.appendingPathComponent("Shared/DishFeed.swift"), atomically: true, encoding: .utf8)
+        let model = FakeHostModel(bodies: ["DishFeed(dishes: recipes.state.recipes)"])
+        let input = GraniteAppAgent.Input(make: .component, type: "Kitchen", relays: ["recipes: RecipesService"], layout: .blank,
+                                          actions: ["refresh = try await recipes.load(page: 1)"],
+                                          notes: "shows the app's DishFeed over the recipes, refreshing on pull")
+        try await Fixture.call(input, in: folder, model: model)
+        let user = model.asked[0].user
+        for part in ["func refresh() async throws", "never declare them again", "struct DishFeed: View",
+                     "init(title: Text? = nil, dishes: [Recipe], actions: DishActions = DishActions())",
+                     "struct DishActions", "var favor: ((DishTarget) -> Void)?", "enum DishTarget", "case dish(Recipe)"] {
+            XCTAssertTrue(user.contains(part), "\(part) in \(user)")
+        }
+    }
+
     func testAPageItCannotDrawIsRefusedWithEveryReason() async throws {
         let folder = try await app()
         let input = GraniteAppAgent.Input(make: .component, type: "FeedComponent", relays: ["feed: FeedService"], layout: .threePane,
