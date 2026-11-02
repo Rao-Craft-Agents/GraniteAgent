@@ -381,5 +381,30 @@
     "Outcome card for c7"
    ]
   ]
+ },
+ {
+  "run": "c8",
+  "date": "2026-11-02",
+  "model": "Qwen3-Coder-Next-REAP-48B-A3B",
+  "sketch": "on",
+  "window": "64k",
+  "wall": 897,
+  "first": 221,
+  "agents": "3 / 2 / 1",
+  "hand": 13,
+  "in_agents": 1,
+  "model_time": 895,
+  "compactions": "inTurn 56k→36k",
+  "peak": "86%",
+  "stop": "loopLimit",
+  "build": "failed",
+  "checks": "room before the agents pass · compaction works pass · the breath **fail** · no thrash **fail**",
+  "entry": "### c8\n\n*2026-11-02 · Qwen3-Coder-Next-REAP-48B-A3B · sketch on · 64k window · Craft 49ccea1 · granite 357985f*\n\n**Prompt**:\n\n> Now give Margin its pages with $granite: a Feed that shows FeedService's posts in loom's FeedView and loads them when it appears, a Post page with its thread, and a Profile; then navigation with Feed and Profile as tabs.\n\n**Time**: 897 s in all; 1 s inside agents, 895 s the model and Craft; first agent call at 221 s.\n\n**Calls** (offset s · duration s · result):\n\n- 211 · 0.0 · `write_file` ok — Components/Feed/Feed.swift\n- 221 · 0.3 · `granite` **refused** — granite: granite refused: `refresh`: FeedService has no `load`; it has no work yet: give it one first: `make: service`, `type: Feed`, `events: [\"load(…) -> … = …\"]`\n- 230 · 0.3 · `granite` **refused** — granite: granite refused: `load` calls `FeedAPI`, which the project does not declare; the app's client is `KeychainTokenStore` or `MarginClient` or `MemoryTokenStore`: c\n- 287 · 0.0 · `edit_file` ok — Services/FeedService/Ops/FeedOps.swift\n- 318 · 0.0 · `edit_file` ok — Services/FeedService/Reducers/FeedService.Set.swift\n- 350 · 0.0 · `edit_file` ok — Services/FeedService/FeedService.swift\n- 357 · 0.0 · `write_file` ok — Components/Feed/Feed.swift\n- 363 · 0.0 · `write_file` ok — Components/Feed/Feed+Center.swift\n- 381 · 0.0 · `write_file` ok — Components/Feed/Feed+View.swift\n- 387 · 0.0 · `write_file` ok — Components/Post/Post.swift\n- 393 · 0.0 · `write_file` ok — Components/Post/Post+Center.swift\n- 413 · 0.0 · `write_file` ok — Components/Post/Post+View.swift\n- 419 · 0.0 · `write_file` ok — Components/Profile/Profile.swift\n- 425 · 0.0 · `write_file` ok — Components/Profile/Profile+Center.swift\n- 446 · 0.0 · `write_file` ok — Components/Profile/Profile+View.swift\n- 489 · 0.0 · `edit_file` **refused** — Components/Home/Home+View.swift: old_string was not found in the file. You are replacing most of this file — write_file with the full new contents is the tool for that. The closest text is at l\n- 509 · 0.0 · `write_file` ok — Components/Home/Home+View.swift\n- 609 · 0.0 · `write_file` ok — Services/FeedService/Ops/FeedOps.swift\n- 886 · 0.8 · `granite` ok — granite\n\n51 reads, 74 calls in all.\n\n**Who wrote what**:\n\n- `granite`: 7 files — Services/FeedService/FeedService+Center.swift, Services/FeedService/FeedService.swift, Services/FeedService/Ops/FeedOps.swift, Services/FeedService/Reducers/FeedService.Load.swift, Services/FeedService/Reducers/FeedService.More.swift, Services/FeedService/Reducers/FeedService.Set.swift, Tests/FeedOpsTests.swift\n- by hand: 13 files — Components/Feed/Feed+Center.swift, Components/Feed/Feed+View.swift, Components/Feed/Feed.swift, Components/Home/Home+View.swift, Components/Post/Post+Center.swift, Components/Post/Post+View.swift, Components/Post/Post.swift, Components/Profile/Profile+Center.swift, Components/Profile/Profile+View.swift, Components/Profile/Profile.swift\n\n**Window**: peak 86% of 64k; compactions: inTurn 56k→36k; checks: room before the agents pass · compaction works pass · the breath **fail** · no thrash **fail**; 6 re-reads after the first compaction\n\n**Stopped**: loopLimit: out of tool rounds (50); one last call offered to `granite`\n\n**Build**: failed\n- `error: value of type 'Post' has no member 'author'`\n\n**Notes**:\n- granite's refusals now named the fix (\"FeedService has no work yet: give it `load` first …\"), and the model's next call went the right way, but it was refused again for an undeclared `FeedAPI` with token stores offered as the client; the model then wrote the service and the pages by hand. The hand-edit note had already been spent before granite was first called. Fixed in Craft (a new refusal re-arms the note) and GraniteAgent (clients by name before stores).\n",
+  "images": [
+   [
+    "c8.png",
+    "Outcome card for c8"
+   ]
+  ]
  }
 ]
