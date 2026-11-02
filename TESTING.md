@@ -843,3 +843,46 @@ With $granite, make Hearth's Feed page: it shows FeedService's posts in loom's F
 **Notes**:
 - With the sketch off (`/sketch`), the model called granite before anything else, as a blank page with its relay, actions and notes: the sketch was what kept it from calling.
 - The host's model wrote the body without SocialActions', SocialTarget's or FeedView's declarations. Fixed in the next release: a blank page is asked for with the shapes of the types its notes and shows name (initializers, cases, stored fields, and the types those name), and with the page's own functions as written, never to be declared again.
+
+### 11. The plain Feed prompt, sketch off, with view shapes in the page prompt (0b18293)
+
+*2026-11-01 · Qwen3-Coder-Next-REAP-48B-A3B-mlx-4bit · 445 s*
+
+**The prompt**, verbatim:
+
+```text
+With $granite, make Hearth's Feed page: it shows FeedService's posts in loom's FeedView, refreshes, loads more as I scroll, and votes on and saves a post.
+```
+
+**The call the model wrote** to `granite`:
+
+```json
+{
+  "actions": [
+    "refresh = try await feed.loadFirstPage()",
+    "more = try await feed.loadMore()"
+  ],
+  "layout": "blank",
+  "make": "component",
+  "notes": "The Feed page shows FeedService's posts in a loom FeedView. It includes refresh on pull-to-refresh, loads more posts as the user scrolls to the end, and provides vote and save actions for each post. The FeedView is configured with the feed's state (posts, phase), menus for sorting/filtering, and actions for vote, save, share, and openPost.",
+  "relays": [
+    "feed: FeedService"
+  ],
+  "type": "Feed",
+  "views": [
+    "feedView(feed FeedService) \"FeedView with posts, phase, menus, actions, empty state\""
+  ]
+}
+```
+
+**What the model changed itself**: `Components/Feed/Feed+Center.swift`, `Components/Feed/Feed.swift`, `Components/Feed/Feed+View.swift`
+
+**Verified by hand**:
+- The macOS scheme does not build with the hand-written page.
+
+![Granite called first and refusing what did not parse; the page then written by hand](Docs/Testing/11-8f-feed.png)
+*Granite called first and refusing what did not parse; the page then written by hand*
+
+**Notes**:
+- The model added a `views` line for the FeedView: its subview was named `FeedFeedViewView`, and its prompt had none of the shapes the page prompt now carries, so its body failed to parse three times and granite wrote nothing, as it should.
+- Fixed in the next release: a role ending in View is named once, and a subview is asked for with the shapes its description names.

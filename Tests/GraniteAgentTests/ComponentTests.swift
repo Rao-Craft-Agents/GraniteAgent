@@ -161,12 +161,16 @@ final class ComponentTests: XCTestCase {
             var body: some View { Text("") }
         }
         """.write(to: folder.appendingPathComponent("Shared/DishFeed.swift"), atomically: true, encoding: .utf8)
-        let model = FakeHostModel(bodies: ["DishFeed(dishes: recipes.state.recipes)"])
+        let model = FakeHostModel(bodies: ["DishFeed(dishes: dishes)", "KitchenDishFeedView(dishes: recipes.state.recipes)"])
         let input = GraniteAppAgent.Input(make: .component, type: "Kitchen", relays: ["recipes: RecipesService"], layout: .blank,
                                           actions: ["refresh = try await recipes.load(page: 1)"],
+                                          views: ["dishFeedView(dishes [Recipe]) \"the app's DishFeed over the dishes\""],
                                           notes: "shows the app's DishFeed over the recipes, refreshing on pull")
         try await Fixture.call(input, in: folder, model: model)
-        let user = model.asked[0].user
+        XCTAssertTrue(model.asked[0].user.contains("struct KitchenDishFeedView: View") && model.asked[0].user.contains("case dish(Recipe)"),
+                      "a subview is named once, and asked for with the shapes it names: \(model.asked[0].user)")
+        XCTAssertTrue(FileManager.default.fileExists(atPath: folder.appendingPathComponent("Components/Kitchen/Views/Kitchen.DishFeedView.swift").path))
+        let user = model.asked[1].user
         for part in ["func refresh() async throws", "never declare them again", "struct DishFeed: View",
                      "init(title: Text? = nil, dishes: [Recipe], actions: DishActions = DishActions())",
                      "struct DishActions", "var favor: ((DishTarget) -> Void)?", "enum DishTarget", "case dish(Recipe)"] {

@@ -16,7 +16,12 @@ struct ViewSpec: Equatable, Sendable {
     var description: String?
 
     /// `row` → `Row`.
-    var roleName: String { SwiftName.upperFirst(role) }
+    /// The role as it names the view: `row` is `Row` (`FeedRowView`); a role already ending in View loses it, so
+    /// `feedView` is `Feed` and the view `FeedFeedView`, never `FeedFeedViewView`.
+    var roleName: String {
+        let name = SwiftName.upperFirst(role)
+        return name.count > 4 && name.hasSuffix("View") ? String(name.dropLast(4)) : name
+    }
 
     var values: [Param] { params.filter { !$0.isClosure } }
     var closures: [Param] { params.filter(\.isClosure) }

@@ -223,6 +223,8 @@ struct ComponentMake {
         }
         lines.append("What it shows: \(description)")
         if let notes, !notes.isEmpty { lines.append("About the app: \(notes)") }
+        let shapes = Self.shapes(named: description + " " + (notes ?? ""), index: spec.index)
+        if !shapes.isEmpty { lines.append("The app's types it names, as declared (use exactly these initializers, cases and members):\n" + shapes) }
         lines.append("Write the body, for this app, in its own names.")
         return lines.joined(separator: "\n")
     }
