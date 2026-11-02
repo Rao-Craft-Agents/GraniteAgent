@@ -226,6 +226,7 @@ final class ComponentTests: XCTestCase {
         } catch {
             let text = "\(error)"
             XCTAssertTrue(text.contains("`refresh`: RecipesService has no `reload`: its work is"), text)
+            XCTAssertTrue(text.contains("to add `reload`, give it one first: `make: service`, `type: Recipes`, `events: [\"reload(…) -> … = …\"]`"), text)
             XCTAssertTrue(text.contains("`clear`: `recipes.favorite` is RecipesService's state: read it as `recipes.state.favorite`"), text)
         }
     }

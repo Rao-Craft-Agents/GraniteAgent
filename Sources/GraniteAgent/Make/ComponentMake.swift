@@ -289,7 +289,13 @@ struct ComponentMake {
                     problems.append("`\(relay.name).\(member)` is \(relay.type)'s state: read it as `\(relay.name).state.\(member)`")
                 } else {
                     let entries = service.entries.filter { !["set", "binding"].contains($0) }
-                    problems.append("\(relay.type) has no `\(member)`" + (entries.isEmpty ? "" : ": its work is " + entries.map { "`\($0)(…)`" }.joined(separator: ", ")))
+                    // PIN: say how to add it. Told only "FeedService has no `load`" of a service with no work at all, the
+                    // model wrote the pages by hand rather than give the service its work first (Margin c6, 2026-11-02).
+                    let base = relay.type.hasSuffix("Service") ? String(relay.type.dropLast("Service".count)) : relay.type
+                    let add = "give it one first: `make: service`, `type: \(base)`, `events: [\"\(member)(…) -> … = …\"]`"
+                    problems.append("\(relay.type) has no `\(member)`"
+                                    + (entries.isEmpty ? "; it has no work yet: " + add
+                                       : ": its work is " + entries.map { "`\($0)(…)`" }.joined(separator: ", ") + "; to add `\(member)`, " + add))
                 }
             }
         }
