@@ -78,6 +78,10 @@ struct ComponentMake {
                 }
             } catch { problems.append("\(error)") }
         }
+        // What an action reaches through a relay is the service's: its entries, `set`, `binding`, `state`, `isLoaded`.
+        for action in actions {
+            problems += Self.relayMisuse(in: action.statements.joined(separator: "\n"), relays: relays, index: index).map { "`\(action.name)`: " + $0 }
+        }
         var views: [ViewSpec] = []
         for line in input.views ?? [] where !line.trimmingCharacters(in: .whitespaces).isEmpty {
             do {
@@ -253,8 +257,28 @@ struct ComponentMake {
     /// Names a body uses that neither SwiftUI nor the app has: a view it makes (`Spinner()`), or work it awaits that
     /// is not one of the page's actions (`await refresh()` on a page with no refresh). Margin, 2026-11-01: bodies
     /// made a `Spinner` and awaited a `refresh` the page did not have, and did not build.
-    static func unknownNames(in body: String, spec: ComponentSpec, view: ViewSpec?) -> [String] {
+    /// Each `relay.member` in `text` that its service does not have: an entry it does not declare (`feed.load()` when
+    /// FeedService has `loadFeed`), or its state read without `.state` (`feed.lastError`). Margin, 2026-11-01.
+    static func relayMisuse(in text: String, relays: [Relay], index: ProjectIndex) -> [String] {
         var problems: [String] = []
+        for relay in relays {
+            guard let service = index.services[relay.type] else { continue }
+            let own: Set<String> = Set(service.entries).union(["set", "binding", "state", "isLoaded", "center", "preload", "restore"])
+            var seen: Set<String> = []
+            for member in text.matches(#"(?<![\w.])\#(relay.name)\.([A-Za-z_]\w*)"#) where !own.contains(member) && seen.insert(member).inserted {
+                if service.field(member) != nil {
+                    problems.append("`\(relay.name).\(member)` is \(relay.type)'s state: read it as `\(relay.name).state.\(member)`")
+                } else {
+                    let entries = service.entries.filter { !["set", "binding"].contains($0) }
+                    problems.append("\(relay.type) has no `\(member)`" + (entries.isEmpty ? "" : ": its work is " + entries.map { "`\($0)(…)`" }.joined(separator: ", ")))
+                }
+            }
+        }
+        return problems
+    }
+
+    static func unknownNames(in body: String, spec: ComponentSpec, view: ViewSpec?) -> [String] {
+        var problems = Self.relayMisuse(in: body, relays: spec.relays, index: spec.index)
         // The app's types, and what this call makes: the page and its subviews.
         let declared = spec.index.declared.union(spec.index.shapes.keys).union(spec.views.map { spec.viewType($0) }).union([spec.type])
         var made: [String] = []

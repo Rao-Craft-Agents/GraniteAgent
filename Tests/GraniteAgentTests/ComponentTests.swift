@@ -214,6 +214,22 @@ final class ComponentTests: XCTestCase {
         XCTAssertTrue(try read(folder, "Components/Kitchen/Kitchen+View.swift").contains("ProgressView()"))
     }
 
+    /// What a page reaches through a relay is its service's: an entry it has, or its state through `.state` (Margin).
+    func testAPageReachesOnlyWhatItsServiceHas() async throws {
+        let folder = try await app()
+        let input = GraniteAppAgent.Input(make: .component, type: "Shelf", relays: ["recipes: RecipesService"], layout: .list,
+                                          shows: ["items = recipes.state.recipes", "title = \"Shelf\""],
+                                          actions: ["refresh = try await recipes.reload()", "clear = recipes.favorite = nil"])
+        do {
+            try await Fixture.call(input, in: folder)
+            XCTFail("the page is refused")
+        } catch {
+            let text = "\(error)"
+            XCTAssertTrue(text.contains("`refresh`: RecipesService has no `reload`: its work is"), text)
+            XCTAssertTrue(text.contains("`clear`: `recipes.favorite` is RecipesService's state: read it as `recipes.state.favorite`"), text)
+        }
+    }
+
     func testAPageItCannotDrawIsRefusedWithEveryReason() async throws {
         let folder = try await app()
         let input = GraniteAppAgent.Input(make: .component, type: "FeedComponent", relays: ["feed: FeedService"], layout: .threePane,
