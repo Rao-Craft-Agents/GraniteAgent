@@ -180,6 +180,9 @@ struct ComponentMake {
             if let failure = BodyAsk.parse(ComponentLayouts(emitter: ComponentEmitter(spec: probe, inputs: inputs)).view()) {
                 throw GraniteError.refused(["the page's `body` does not parse: \(failure)"])
             }
+            // The rule a body asked of the model is held to, for one given in the call too.
+            let unknown = Self.unknownNames(in: given, spec: spec, view: nil)
+            if !unknown.isEmpty { throw GraniteError.refused(unknown.map { "the page's `body`: \($0)" }) }
             spec.bodies["content"] = given
         } else if layout == .blank, let asker {
             note("asking for \(type)'s page")

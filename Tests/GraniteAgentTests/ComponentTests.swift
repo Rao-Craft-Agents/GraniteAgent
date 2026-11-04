@@ -197,6 +197,17 @@ final class ComponentTests: XCTestCase {
             XCTAssertTrue("\(error)".contains("the page's `body` does not parse"), "\(error)")
         }
         XCTAssertFalse(FileManager.default.fileExists(atPath: folder.appendingPathComponent("Components/Pantry").path))
+        // A given body is held to the rule an asked one is: work the page does not have is refused, with what it has.
+        var unseen = input
+        unseen.type = "Larder"
+        unseen.body = "List(recipes.state.recipes) { recipe in\n    Text(recipe.title)\n}\n.refreshable { try? await reload() }"
+        do {
+            try await Fixture.call(unseen, in: folder)
+            XCTFail("a body that awaits work the page does not have is refused")
+        } catch {
+            XCTAssertTrue("\(error)".contains("the page's `body`: `reload()` is not one of the page's actions (it has `refresh()`)"), "\(error)")
+        }
+        XCTAssertFalse(FileManager.default.fileExists(atPath: folder.appendingPathComponent("Components/Larder").path))
     }
 
     /// A body that makes a view no one has, or awaits work the page does not have, is asked for again with the reason

@@ -73,6 +73,48 @@ final class GraniteAgentTests: XCTestCase {
 
     /// A host over the wire may give its folder only beside the call: the files land there, not in the folder the
     /// runner was started in.
+    /// The answer keeps `granite-answer/1`: stamped by the runner, what the call made held against what it asked
+    /// for, and every kind one `makes` declares (Margin regime, 2026-11-04).
+    func testTheAnswerSaysWhatItMadeOfWhatItWasAsked() async throws {
+        let folder = try Fixture.folder()
+        let input = try JSONSerialization.data(withJSONObject: ["make": "project", "name": "Recipes", "directory": folder.path])
+        let answer = try await AnyAgentPackage(GraniteAppAgent.self).perform(input, host: AgentHost(directory: folder.path))
+        let json = try XCTUnwrap(JSONSerialization.jsonObject(with: answer) as? [String: Any])
+        XCTAssertEqual(json["format"] as? String, AgentAnswerStandard.format)
+        let result = try JSONDecoder().decode(GraniteResult.self, from: answer)
+        XCTAssertEqual(result.expected, [AgentExpected(kind: "project", name: "Recipes")])
+        XCTAssertEqual(result.made.map(\.name), ["Recipes"])
+        XCTAssertTrue(result.made[0].path?.hasSuffix("Shared/Utility/AppRoot.swift") == true, "\(result.made)")
+        XCTAssertEqual(result.made[0].state, .written)
+        let kinds = Set(GraniteAppAgent.makes.map(\.kind))
+        for make in GraniteMake.allCases { XCTAssertTrue(kinds.contains(GraniteMeasure.kind(make)), "\(make) is a kind granite declares") }
+
+        let service = try await Fixture.call(Fixture.recipesService, in: try appWithRecipe())
+        XCTAssertEqual(service.expected, [AgentExpected(kind: "service", name: "RecipesService")])
+        XCTAssertEqual(service.made.map(\.name), ["RecipesService"])
+        let again = try await Fixture.call(Fixture.recipesService, in: URL(fileURLWithPath: service.paths[0]).deletingLastPathComponent()
+            .deletingLastPathComponent().deletingLastPathComponent())
+        XCTAssertEqual(again.made.first?.state, .rewritten, "the service was there before")
+        let destinations = GraniteMeasure.expected(GraniteAppAgent.Input(make: .navigation, destinations: [#"feed: FeedPage "Feed" house"#, #"profile: ProfilePage "Profile" person"#]))
+        XCTAssertEqual(destinations.map(\.name), ["feed", "profile"])
+    }
+
+    /// A refusal says its kind: the call's to fix, the model's when its rounds ran out, the Swift that did not parse.
+    func testARefusalSaysWhoseItIs() {
+        XCTAssertEqual(GraniteError.refused(["a", "b"]).refusal, AgentRefusal(.call, ["a", "b"]))
+        XCTAssertEqual(GraniteError.unanswered(["x did not come out right in 3 rounds"]).refusal.kind, .model)
+        XCTAssertEqual(GraniteError.line("load(", "a call is closed").refusal, AgentRefusal(.call, "`load(`: a call is closed"))
+        XCTAssertEqual(AgentFilesError.unparsed("x.swift:1: error").refusal.kind, .parse)
+    }
+
+    private func appWithRecipe() async throws -> URL {
+        let folder = try Fixture.folder()
+        _ = try await Fixture.call(Fixture.project, in: folder)
+        try FileManager.default.createDirectory(at: folder.appendingPathComponent("Shared/Models"), withIntermediateDirectories: true)
+        try Fixture.recipe.write(to: folder.appendingPathComponent("Shared/Models/Recipe.swift"), atomically: true, encoding: .utf8)
+        return folder
+    }
+
     func testTheHostsFolderIsUsedWhenTheCallGivesNone() async throws {
         let folder = try Fixture.folder()
         let input = try JSONSerialization.data(withJSONObject: ["make": "project", "name": "Pantry"])

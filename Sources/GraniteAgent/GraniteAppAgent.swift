@@ -153,6 +153,22 @@ public struct GraniteAppAgent: GraniteAgentPackage {
     public static let word = "granite"
     public static let summary = "makes and grows an iOS + macOS app on Granite — the Xcode project, Granite linked into an existing one, kits, services with their reducers and tests, pages laid out from what they show, navigation and modals."
     public static let lanes: Int? = 1
+    /// What it makes, each kind with where it lands: what a host routes to it, and what its answer measures.
+    public static let makes = [
+        AgentMake(kind: "project", what: "an iOS and macOS app on Granite: its Xcode project, the root that boots it, its environment and settings services and its Home page",
+                  into: ["*.xcodeproj", "Shared/App.swift", "Shared/AppDelegate.swift", "Shared/Assets.xcassets/*", "Shared/Utility/AppRoot.swift",
+                         "Services/EnvironmentService/*", "Services/ConfigService/*", "Components/Home/*", "Tests/*", "UITests/*"],
+                  never: "an API's client or the app's value types"),
+        AgentMake(kind: "kit", what: "a Swift package of the app's own, linked into it, for public services", into: ["Packages/*"]),
+        AgentMake(kind: "service", what: "a service: its state, its one writer, the work its reducers run, and its tests",
+                  into: ["Services/*", "Packages/*/Sources/*/Services/*", "Tests/*OpsTests.swift"]),
+        AgentMake(kind: "page", what: "a page that composes the app's views and reads its services; a view the app already has (a kit's FeedView) is shown by a blank page, never rewritten",
+                  into: ["Components/*"], never: "the views a page shows"),
+        AgentMake(kind: "navigation", what: "the app's destinations and how it moves between them: tabs on iPhone, a sidebar on iPad and the Mac",
+                  into: ["Shared/Utility/AppDestination.swift", "Shared/Utility/Routes.swift", "Shared/Utility/Device.swift", "Services/LayoutService/*",
+                         "iOS/PlatformNavigationView.swift", "macOS/PlatformNavigationView.swift"]),
+        AgentMake(kind: "modals", what: "the app's sheets, alerts, toasts and travelling panels, from one service", into: ["Services/ModalService/*"]),
+    ]
     public static let fields = [
         "make": "what to make: project (a new iOS + macOS app), package (a kit of services), link (Granite into an Xcode project this agent did not make), service, component (a page), navigation, modals",
         "name": "the app's or the kit's name, letters and digits, like `Recipes`: project and package",
@@ -235,11 +251,14 @@ public struct GraniteAppAgent: GraniteAgentPackage {
         }
         if input.make != .project { try ProjectSync.include(&plan, in: workspace) }
         PackageImports.add(to: &plan, index: ProjectIndex(root: workspace.root))
+        let expected = GraniteMeasure.expected(input)
         guard !plan.files.isEmpty else {
-            return GraniteResult(path: nil, paths: [], make: input.make.rawValue, types: plan.types, notes: plan.notes)
+            return GraniteResult(path: nil, paths: [], make: input.make.rawValue, types: plan.types, notes: plan.notes, expected: expected)
         }
         note("writing \(plan.files.count) file\(plan.files.count == 1 ? "" : "s") for \(input.make.rawValue)")
+        let existed = Set(plan.files.map(\.url.path).filter { FileManager.default.fileExists(atPath: $0) })
         let written = try workspace.files.write(plan.files.map { ($0.url, $0.text) })
-        return GraniteResult(path: written.first, paths: written, make: input.make.rawValue, types: plan.types, notes: plan.notes)
+        return GraniteResult(path: written.first, paths: written, make: input.make.rawValue, types: plan.types, notes: plan.notes,
+                             made: GraniteMeasure.made(expected, make: input.make, written: written, existed: existed), expected: expected)
     }
 }

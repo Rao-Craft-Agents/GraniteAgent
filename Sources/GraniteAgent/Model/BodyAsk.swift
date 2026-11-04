@@ -44,7 +44,7 @@ struct BodyAsk: Sendable {
             prompt = user + "\n\nYour last answer was:\n" + body + "\n\nWhat was wrong with it:\n"
                 + problems.map { "- " + $0 }.joined(separator: "\n") + "\n\nWrite the body again, fixed."
         }
-        throw GraniteError.refused(["\(what) did not come out right in \(max(1, rounds)) round\(rounds == 1 ? "" : "s"): \(last)"])
+        throw GraniteError.unanswered(["\(what) did not come out right in \(max(1, rounds)) round\(rounds == 1 ? "" : "s"): \(last)"])
     }
 
     /// The rules every body keeps, whatever it is for.
