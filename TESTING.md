@@ -66,6 +66,7 @@ made room; the regime's bars passed and whether the base case held; how the turn
 | [replay-2026-11-03-2-t1-2](#replay-2026-11-03-2-t1-2) | 2026-11-04 | baseline · on · 64k | 1484 (572) | 313.7 | 1 / 0 / 0 | 5 of 5 | 2 | 71% · 1 | 9/14 · not yet | loopLimit ×1 | both succeeded |
 | [replay-replay-2026-11-03-2-t1-2-t2-1](#replay-replay-2026-11-03-2-t1-2-t2-1) | 2026-11-04 | baseline · on · 64k | 638 (5) | 198.7 | 8 / 5 / 2 | 3 of 3 | 0 | 57% · 0 | 10/14 · not yet | completed ×1 | both succeeded |
 | [replay-replay-replay-2026-11-03-2-t1-2-t2-1-t3-1](#replay-replay-replay-2026-11-03-2-t1-2-t2-1-t3-1) | 2026-11-04 | baseline · on · 64k | 572 (4) | 119.6 | 2 / 1 / 1 | 13 of 13 | 0 | 50% · 0 | 11/14 · not yet | completed ×1 | both succeeded |
+| [replay-replay-replay-replay-2026-11-03-2-t1-2-t2-1-t3-1-t4-1](#replay-replay-replay-replay-2026-11-03-2-t1-2-t2-1-t3-1-t4-1) | 2026-11-04 | baseline · on · 64k | 514 (80) | 228.8 | 6 / 3 / 1 | 2 of 2 | 0 | — · 0 | 8/14 · not yet | no_done ×1 | both failed |
 
 ### replay-2026-11-03-2-t1-2
 
@@ -244,3 +245,57 @@ made room; the regime's bars passed and whether the base case held; how the turn
 
 ![The contact sheet the screenshots agent wrote](Docs/Testing/l3-replay-replay-replay-2026-11-03-2-t1-2-t2-1-t3-1-sheet.png)
 *The contact sheet the screenshots agent wrote*
+
+### replay-replay-replay-replay-2026-11-03-2-t1-2-t2-1-t3-1-t4-1
+
+*2026-11-04 · Qwen3-Coder-Next-REAP-48B-A3B-mlx-4bit · baseline · expand on · 64k window · stage P0 · max_rows 4 · Craft 6e950df3619c+dirty (committed as a7bbf02) · Frigate c5b68d76f0b7 · granite 4210ca9 · loom bcf0c85 · mocks 3bea47d · network dbac458 · screenshots 22186ba · replay of turn 4 of replay-replay-replay-2026-11-03-2-t1-2-t2-1-t3-1*
+
+**Prompts**, one a turn, verbatim (`regime/prompts/`):
+
+> **t4 pages**: Now give Margin its pages with $granite, in this order: first a Feed page that shows FeedService's posts in loom's FeedView and loads them when it appears; then a PostDetail page that shows one post with its thread in loom's PostPageView and CommentThreadView and has PostService load them when it appears; then a Profile page that shows a user and their posts in loom's ProfileView, loaded by ProfileService; then navigation with Feed and Profile as tabs, Feed first.
+
+**Time**: 514 s in all; 80 s inside agents, 434 s the model and Craft; first agent call at 228.8 s.
+
+| Turn | Wall s | Prompt Σ | Completion Σ | Reused | Agents m/r/c | By hand | Stop |
+|---|---|---|---|---|---|---|---|
+| t4 pages | 514 | 908,818 | 3,453 | 92% | granite 6/3/1 | 0 | no_done |
+
+**Agents**, across the run (`granite-answer/1`: what each made of what its calls expected):
+
+| Agent | Revision | Calls m/r/c | Made of expected | Not made | Problems | Refusals by kind | Asks (tokens) |
+|---|---|---|---|---|---|---|---|
+| `granite` | 4210ca9 | 6 / 3 / 1 | 2 of 2 (100%) | — | — | call 2, model 1 | 3 (394) |
+
+**Who wrote what**:
+
+- `granite`: 7 files: Components/Feed/Feed+Actions.swift, Components/Feed/Feed+Center.swift, Components/Feed/Feed+View.swift, Components/Feed/Feed.swift, Components/PostDetail/PostDetail+Center.swift, Components/PostDetail/PostDetail+View.swift, Components/PostDetail/PostDetail.swift
+- by hand: 0 files
+
+**Bars**: 8 of 14 passed · base case not yet
+
+**Checks**: mocks_decodes pass · mocks_counts pass · mocks_stems pass · mocks_threads pass · services pass · loom_screens pass · pages **fail** · build_macos **fail** · build_ios **fail** · tests **fail** · feed_draws_light — · feed_draws_dark — · agents_made pass · refusals_typed pass · hand_per_turn pass · refusals_corrected **fail** · no_cargo pass · trail pass
+
+- pages: no page draws ProfileView; no AppDestination
+- build_macos: Components/PostDetail/PostDetail+View.swift:16:31: error: cannot find 'library' in scope; |                               `- error: cannot find 'library' in scope; Components/PostDetail/PostDetail+View.swift:19:35: error: cannot find 'library' in scope; |                                   `- error: 
+- build_ios: Components/PostDetail/PostDetail+View.swift:16:31: error: cannot find 'library' in scope; |                               `- error: cannot find 'library' in scope; Components/PostDetail/PostDetail+View.swift:19:35: error: cannot find 'library' in scope; |                                   `- error: 
+- tests: Components/PostDetail/PostDetail+View.swift:16:31: error: cannot find 'library' in scope; |                               `- error: cannot find 'library' in scope; Components/PostDetail/PostDetail+View.swift:19:35: error: cannot find 'library' in scope; |                                   `- error: 
+- refusals_corrected: turns [4] left a refusal uncorrected
+
+**Refusals**:
+
+- granite refused: the page's `body` does not parse: Body.swift:28:9: error: declaration is only valid at file scope
+- granite refused: Profile did not come out right in 3 rounds: ProfileService has no `refresh`: its work is `loadUser(…)`, `loadPosts(…)`; to add `refresh`, give it one first: `make: service`, `type: Profile`, `events:…
+- granite refused: `refresh` uses `profile`, which its work cannot see: it sees its parameters (none), the state as `state.<field>`; a client is reached by its type (`MarginClient…`)
+
+**Stopped**: t4 no_done
+
+**Build**: iOS: failed · macOS: failed
+
+**Notes**:
+
+- Turn 4 run again from the state `replay-replay-replay-2026-11-03-2-t1-2-t2-1-t3-1` left before it; the chain started at 2026-11-03-2.
+- Turn 4 was ended before it finished (`regime.sh stop --now`): what it had not reached yet, its builds and pages among them, is not its verdict.
+- The trail is `regime/runs/replay-replay-replay-replay-2026-11-03-2-t1-2-t2-1-t3-1-t4-1/Margin`: open it in Craft and type `#lantern`.
+
+![Outcome card for replay-replay-replay-replay-2026-11-03-2-t1-2-t2-1-t3-1-t4-1](Docs/Testing/l3-replay-replay-replay-replay-2026-11-03-2-t1-2-t2-1-t3-1-t4-1-card.png)
+*Outcome card for replay-replay-replay-replay-2026-11-03-2-t1-2-t2-1-t3-1-t4-1*
