@@ -128,6 +128,30 @@ final class ServiceTests: XCTestCase {
 
     /// A call that answers a page envelope is read for the list the field holds (Hearth, 2026-11-01: six reducers
     /// typed `[Post]` around a call answering `PostPage` did not build, and the model fixed each by hand).
+    /// PIN: a type Swift Testing also declares is written with its module in the tests, which import Testing: a bare
+    /// `[Comment]` there is ambiguous, and the app's tests stopped building (Margin, 2026-11-03).
+    func testATypeSwiftTestingAlsoNamesIsWrittenWithItsModuleInTheTests() async throws {
+        let folder = try await app()
+        try """
+        import Foundation
+
+        struct Comment: Codable, Hashable, Sendable {
+            var body: String
+            static let preview = Comment(body: "hi")
+        }
+        """.write(to: folder.appendingPathComponent("Shared/Models/Comment.swift"), atomically: true, encoding: .utf8)
+        let input = GraniteAppAgent.Input(make: .service, type: "Notes", state: ["comments [Comment] = []", "pinned Comment?"])
+        _ = try await Fixture.call(input, in: folder)
+        let tests = try read(folder, "Tests/NotesOpsTests.swift")
+        XCTAssertTrue(tests.contains("import Testing"), tests)
+        XCTAssertTrue(tests.contains("let value: [Recipes.Comment] = "), tests)
+        XCTAssertTrue(tests.contains("let value: Recipes.Comment? = "), tests)
+        XCTAssertNil(tests.range(of: #"(?<![\w.])Comment(?![\w])"#, options: .regularExpression), "no bare Comment left: \(tests)")
+        XCTAssertFalse(tests.contains("Recipes.Recipes."), tests)
+        XCTAssertEqual(ServiceEmitter.qualify("[Comment]? Commentary Tag.x MarginKit.Comment", ["Comment": "MarginKit.Comment", "Tag": "MarginKit.Tag"]),
+                       "[MarginKit.Comment]? Commentary MarginKit.Tag.x MarginKit.Comment", "a name on its own, never inside another or after a dot")
+    }
+
     func testAnEnvelopeIsReadForTheListTheFieldHolds() async throws {
         let folder = try await app()
         try """
@@ -176,6 +200,18 @@ final class ServiceTests: XCTestCase {
             XCTAssertFalse(text.contains("`favor` uses"), "a parameter, a type, a label and a string are seen: \(text)")
         }
         XCTAssertEqual(ServiceMake.roots(of: "HearthClient.current.posts(page: page, sort: state.sort).posts"), ["page", "state"])
+
+        // A field read as `state.<field>` is one the state has (Margin regime, 2026-11-04: `state.nextCursor`, no such field).
+        let unread = GraniteAppAgent.Input(make: .service, type: "Notes", state: ["recipes [Recipe] = []"],
+                                           events: ["load(id String) -> recipes = RecipeClient.current.page(id: id, cursor: state.nextCursor, sort: state.recipes.count)"])
+        do {
+            try await Fixture.call(unread, in: folder)
+            XCTFail("the call is refused")
+        } catch {
+            let text = "\(error)"
+            XCTAssertTrue(text.contains("`load` reads `state.nextCursor`, which NotesService's state does not have (it has `recipes`): add `nextCursor <Type>` to `state`"), text)
+            XCTAssertFalse(text.contains("`state.recipes`"), "a field the state has is read: \(text)")
+        }
     }
 
     /// A call whose answer cannot fill the field is refused, with the calls whose answer can (Hearth, 2026-11-01).

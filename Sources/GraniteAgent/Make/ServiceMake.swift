@@ -105,6 +105,23 @@ struct ServiceMake {
             problems.append("`\(event.verb)` uses " + unseen.map { "`\($0)`" }.joined(separator: ", ")
                             + ", which its work cannot see: it sees " + ways.joined(separator: ", ") + reach)
         }
+        // A field the call reads as `state.<field>` is one the state has: `state.nextCursor` in PostService's work, with no
+        // `nextCursor` in its state, was written, did not build, and the model added the field by hand (Margin regime,
+        // 2026-11-04).
+        for event in events {
+            guard let expression = event.expression else { continue }
+            let pattern = try? NSRegularExpression(pattern: #"(?<![\w.])state\.([A-Za-z_]\w*)"#)
+            let range = NSRange(expression.startIndex..., in: expression)
+            let read = Set((pattern?.matches(in: expression, range: range) ?? []).compactMap { match in
+                Range(match.range(at: 1), in: expression).map { String(expression[$0]) }
+            })
+            let missing = read.filter { name in !fields.contains { $0.name == name } }.sorted()
+            guard !missing.isEmpty else { continue }
+            let have = fields.map { "`\($0.name)`" }.joined(separator: ", ")
+            problems.append("`\(event.verb)` reads " + missing.map { "`state.\($0)`" }.joined(separator: ", ")
+                            + ", which \(type)'s state does not have" + (have.isEmpty ? "" : " (it has \(have))")
+                            + ": add " + missing.map { "`\($0) <Type>`" }.joined(separator: ", ") + " to `state`, or read what it has")
+        }
         // A client no package declares (`SocialAPI.loadFeed(…)`, Margin 2026-11-01) cannot build. When the app has a client,
         // the refusal names it: told to "make the client first" while `MarginClient` existed, the model gave up on the agent
         // (Margin c4, 2026-11-01). Only names that read as a client are held to this; a framework's types are not known here.
@@ -195,13 +212,17 @@ struct ServiceMake {
         let enums = index.types.filter { $0.value.kind == "enum" }.mapValues(\.cases)
         if let package = placement.package {
             if let tests = package.tests {
-                plan.write(tests.appendingPathComponent("\(base)OpsTests.swift"), emitter.tests(module: package.target, previews: index.previews, enums: enums), role: .other)
+                let qualified = ServiceEmitter.testingQualified(types: index.types.keys, modules: index.modules, module: package.target)
+                plan.write(tests.appendingPathComponent("\(base)OpsTests.swift"),
+                           emitter.tests(module: package.target, previews: index.previews, enums: enums, qualified: qualified), role: .other)
             } else {
                 plan.notes.append("\(package.name) has no test target, so \(base)Ops has no tests")
             }
         } else if let (folder, module) = try workspace.unitTests() {
 
-            plan.write(folder.appendingPathComponent("\(base)OpsTests.swift"), emitter.tests(module: module, previews: index.previews, enums: enums), role: .tests)
+            let qualified = ServiceEmitter.testingQualified(types: index.types.keys, modules: index.modules, module: module)
+            plan.write(folder.appendingPathComponent("\(base)OpsTests.swift"),
+                       emitter.tests(module: module, previews: index.previews, enums: enums, qualified: qualified), role: .tests)
         } else {
             plan.notes.append("the project has no unit-test target, so \(base)Ops has no tests")
         }

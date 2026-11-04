@@ -311,8 +311,33 @@ struct ServiceEmitter {
     // MARK: - Tests
 
     /// The Ops' tests: one a kind, run without a relay. `module` is what they `@testable import`.
-    func tests(module: String, previews: Set<String>, enums: [String: [String]]) -> String {
+    /// Swift Testing's own public types. A test file imports Testing, so an app type of one of these names is
+    /// ambiguous there unless it is written with its module: `[Comment]` beside `import Testing` did not build, and
+    /// the model wrote `MarginKit.Comment` into the tests by hand (Margin, 2026-11-03).
+    static let testingNames: Set<String> = ["Attachment", "Bug", "Comment", "ConditionTrait", "Confirmation", "Expectation", "Issue",
+                                            "ParallelizationTrait", "SourceLocation", "SuiteTrait", "Tag", "Test", "TestTrait",
+                                            "TimeLimitTrait", "Trait"]
+
+    /// The project's types Swift Testing also declares, each as a test file must write it: with the module that
+    /// declares it, or the tested module for the app's own.
+    static func testingQualified(types: some Sequence<String>, modules: [String: String], module: String) -> [String: String] {
+        var out: [String: String] = [:]
+        for name in types where testingNames.contains(name) { out[name] = (modules[name] ?? module) + "." + name }
+        return out
+    }
+
+    /// `text` with each name `qualified` holds written with its module, wherever it stands as a type on its own.
+    static func qualify(_ text: String, _ qualified: [String: String]) -> String {
+        var out = text
+        for (name, full) in qualified {
+            out = out.replacingOccurrences(of: #"(?<![\w.])"# + name + #"(?![\w])"#, with: full, options: .regularExpression)
+        }
+        return out
+    }
+
+    func tests(module: String, previews: Set<String>, enums: [String: [String]], qualified: [String: String] = [:]) -> String {
         let state = "\(type).Center.State"
+        let q = { (text: String) in Self.qualify(text, qualified) }
         var lines = ["import Foundation", "import Testing", "@testable import \(module)", "",
                      "/// \(type)'s state changes, one a kind: what its writer does, run without a relay.",
                      "struct \(spec.base)OpsTests {"]
@@ -321,7 +346,7 @@ struct ServiceEmitter {
             guard let value = Samples.value(field.type, previews: previews, enums: enums) ?? field.defaultValue else { continue }
             lines += ["    @Test func writes\(SwiftName.upperFirst(field.name))() {",
                       "        var state = \(state)()",
-                      "        let value: \(field.type) = \(value)",
+                      "        let value: \(q(field.type.description)) = \(q(value))",
                       "        \(spec.base)Ops.apply(.\(name)(value), to: &state)",
                       "        #expect(state.\(name) == value)",
                       "    }", ""]
@@ -331,7 +356,7 @@ struct ServiceEmitter {
             let name = SwiftName.member(field.name)
             lines += ["    @Test func appendsTo\(SwiftName.upperFirst(field.name))() {",
                       "        var state = \(state)()",
-                      "        let page: [\(element)] = [\(value)]",
+                      "        let page: [\(q(element.description))] = [\(q(value))]",
                       "        \(spec.base)Ops.apply(.\(Self.appendCase(field.name))(page), to: &state)",
                       "        \(spec.base)Ops.apply(.\(Self.appendCase(field.name))(page), to: &state)",
                       "        #expect(state.\(name) == page + page)",
