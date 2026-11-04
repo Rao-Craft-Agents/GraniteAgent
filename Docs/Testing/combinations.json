@@ -1,1 +1,47 @@
-[]
+[
+  {
+    "run": "replay-2026-11-03-2-t1-2",
+    "date": "2026-11-04",
+    "model": "Qwen3-Coder-Next-REAP-48B-A3B-mlx-4bit",
+    "window": "64k",
+    "wall": 1484,
+    "first": 313.7,
+    "agents": "1 / 0 / 0",
+    "hand": 2,
+    "in_agents": 572,
+    "model_time": 912,
+    "compactions": "t1: atAgentCall 47k→38k",
+    "peak": "71%",
+    "stop": "t1 loopLimit",
+    "build": "iOS: succeeded · macOS: succeeded",
+    "checks": "9/14 bars · base case not yet · mocks_decodes pass · mocks_counts pass · mocks_stems pass · mocks_threads pass · services fail · loom_screens fail · pages fail · build_macos pass · build_ios pass · tests pass · feed_draws_light fail · feed_draws_dark fail · agents_made pass · refusals_typed pass · hand_per_turn pass · refusals_corrected pass · no_cargo pass · trail pass",
+    "entry": "### replay-2026-11-03-2-t1-2\n\n*2026-11-04 · Qwen3-Coder-Next-REAP-48B-A3B-mlx-4bit · baseline · expand on · 64k window · stage P0 · max_rows 4 · Craft 6e950df3619c+dirty (committed as a7bbf02) · Frigate c5b68d76f0b7 · granite 4210ca9 · loom bcf0c85 · mocks 3bea47d · network dbac458 · screenshots 22186ba · replay of turn 1 of 2026-11-03-2*\n\n**Prompts**, one a turn, verbatim (`regime/prompts/`):\n\n> **t1 mocks**: Give Margin believable data with $mocks until the server exists: readers with handles and faces, the book clubs they post in, posts in the voice of people talking through the chapters they are reading, and comment threads with depth; counts posts: 40, comments: 120, people: 20, communities: 6.\n\n**Time**: 1484 s in all; 572 s inside agents, 912 s the model and Craft; first agent call at 313.7 s.\n\n| Turn | Wall s | Prompt Σ | Completion Σ | Reused | Agents m/r/c | By hand | Stop |\n|---|---|---|---|---|---|---|---|\n| t1 mocks | 1484 | 366,406 | 10,034 | 75% | mocks 1/0/0 | 2 | loopLimit |\n\n**Agents**, across the run (`granite-answer/1`: what each made of what its calls expected):\n\n| Agent | Revision | Calls m/r/c | Made of expected | Not made | Problems | Refusals by kind | Asks (tokens) |\n|---|---|---|---|---|---|---|---|\n| `mocks` | 3bea47d | 1 / 0 / 0 | 5 of 5 (100%) | — | — | — | 30 (15,864) |\n\n**Who wrote what**:\n\n- `mocks`: 18 files: Packages/MarginKit/Sources/MarginKit/Mocks/Fixtures/CommentsFixture.swift, Packages/MarginKit/Sources/MarginKit/Mocks/Fixtures/CommunitiesFixture.swift, Packages/MarginKit/Sources/MarginKit/Mocks/Fixtures/CreateCommentFixture.swift, Packages/MarginKit/Sources/MarginKit/Mocks/Fixtures/CreatePostFixture.swift, Packages/MarginKit/Sources/MarginKit/Mocks/Fixtures/PostsFixture.swift, Packages/MarginKit/Sources/MarginKit/Mocks/Fixtures/UserFixture.swift, Packages/MarginKit/Sources/MarginKit/Mocks/Fixtures/UserPostsFixture.swift, Packages/MarginKit/Sources/MarginKit/Mocks/MarginClient+Mock.swift, …\n- by hand: 2 files: Packages/MarginKit/Sources/MarginKit/Transport/MockTransport.swift, Packages/MarginKit/Tests/MarginKitTests/Support/Samples.swift\n\n**Bars**: 9 of 14 passed · base case not yet\n\n**Checks**: mocks_decodes pass · mocks_counts pass · mocks_stems pass · mocks_threads pass · services **fail** · loom_screens **fail** · pages **fail** · build_macos pass · build_ios pass · tests pass · feed_draws_light **fail** · feed_draws_dark **fail** · agents_made pass · refusals_typed pass · hand_per_turn pass · refusals_corrected pass · no_cargo pass · trail pass\n\n- services: FeedService: no folder; PostService: no folder; ProfileService: no folder; no *OpsTests.swift\n- loom_screens: missing FeedView, PostPageView, CommentThreadView, ProfileView; no conformance names Post, Comment, User, Community\n- pages: no page draws FeedView; no page draws PostPageView or CommentThreadView; no page draws ProfileView; no AppDestination\n- feed_draws_light: no mock title on the feed: 9:41 | 00 | Margin | Everything is in place.\n- feed_draws_dark: no mock title on the feed: 9:41 | Margin | Everything is in place.\n\n**Stopped**: t1 loopLimit\n\n**Build**: iOS: succeeded · macOS: succeeded\n\n**Notes**:\n\n- Turn 1 run again from the state `2026-11-03-2` left before it; the chain started at 2026-11-03-2.\n- The trail is `regime/runs/replay-2026-11-03-2-t1-2/Margin`: open it in Craft and type `#lantern`.\n",
+    "images": [
+      [
+        "card.png",
+        "Outcome card for replay-2026-11-03-2-t1-2"
+      ],
+      [
+        "launch-dark.png",
+        "iPhone, dark: the launch page (no feed destination was found)"
+      ],
+      [
+        "launch-light.png",
+        "iPhone, light: the launch page (no feed destination was found)"
+      ],
+      [
+        "sheet.png",
+        "The contact sheet the screenshots agent wrote"
+      ]
+    ],
+    "variant": "baseline",
+    "expand": "on",
+    "bars": "9/14",
+    "base_case": false,
+    "made": "5/5",
+    "replay": {
+      "run": "2026-11-03-2",
+      "turn": 1
+    }
+  }
+]
