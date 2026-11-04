@@ -88,5 +88,50 @@
       "run": "replay-2026-11-03-2-t1-2",
       "turn": 2
     }
+  },
+  {
+    "run": "replay-replay-replay-2026-11-03-2-t1-2-t2-1-t3-1",
+    "date": "2026-11-04",
+    "model": "Qwen3-Coder-Next-REAP-48B-A3B-mlx-4bit",
+    "window": "64k",
+    "wall": 572,
+    "first": 119.6,
+    "agents": "2 / 1 / 1",
+    "hand": 0,
+    "in_agents": 4,
+    "model_time": 568,
+    "compactions": "none",
+    "peak": "50%",
+    "stop": "t3 completed",
+    "build": "iOS: succeeded · macOS: succeeded",
+    "checks": "11/14 bars · base case not yet · mocks_decodes pass · mocks_counts pass · mocks_stems pass · mocks_threads pass · services pass · loom_screens pass · pages fail · build_macos pass · build_ios pass · tests pass · feed_draws_light fail · feed_draws_dark fail · agents_made pass · refusals_typed pass · hand_per_turn pass · refusals_corrected pass · no_cargo pass · trail pass",
+    "entry": "### replay-replay-replay-2026-11-03-2-t1-2-t2-1-t3-1\n\n*2026-11-04 · Qwen3-Coder-Next-REAP-48B-A3B-mlx-4bit · baseline · expand on · 64k window · stage P0 · max_rows 4 · Craft 6e950df3619c+dirty (committed as a7bbf02) · Frigate c5b68d76f0b7 · granite 4210ca9 · loom bcf0c85 · mocks 3bea47d · network dbac458 · screenshots 22186ba · replay of turn 3 of replay-replay-2026-11-03-2-t1-2-t2-1*\n\n**Prompts**, one a turn, verbatim (`regime/prompts/`):\n\n> **t3 loom**: Now give Margin its social screens with $loom over MarginKit's own types: Post as the post, Comment as the comment with parent=parentID, User as the user, Community as the community; the feed, post, thread and profile screens, in Loom's look, light and dark.\n\n**Time**: 572 s in all; 4 s inside agents, 568 s the model and Craft; first agent call at 119.6 s.\n\n| Turn | Wall s | Prompt Σ | Completion Σ | Reused | Agents m/r/c | By hand | Stop |\n|---|---|---|---|---|---|---|---|\n| t3 loom | 572 | 198,206 | 1,105 | 65% | loom 2/1/1 | 0 | completed |\n\n**Agents**, across the run (`granite-answer/1`: what each made of what its calls expected):\n\n| Agent | Revision | Calls m/r/c | Made of expected | Not made | Problems | Refusals by kind | Asks (tokens) |\n|---|---|---|---|---|---|---|---|\n| `loom` | bcf0c85 | 2 / 1 / 1 | 13 of 13 (100%) | — | — | call 1 | 0 (0) |\n\n**Who wrote what**:\n\n- `loom`: 37 files: Shared/Views/Social/AvatarView.swift, Shared/Views/Social/BannerView.swift, Shared/Views/Social/CensorView.swift, Shared/Views/Social/CommentCardView.swift, Shared/Views/Social/CommentThreadView.swift, Shared/Views/Social/Conformances/AppSocial.swift, Shared/Views/Social/Conformances/Comment+Comment.swift, Shared/Views/Social/Conformances/Community+Community.swift, …\n- by hand: 0 files\n\n**Bars**: 11 of 14 passed · base case not yet\n\n**Checks**: mocks_decodes pass · mocks_counts pass · mocks_stems pass · mocks_threads pass · services pass · loom_screens pass · pages **fail** · build_macos pass · build_ios pass · tests pass · feed_draws_light **fail** · feed_draws_dark **fail** · agents_made pass · refusals_typed pass · hand_per_turn pass · refusals_corrected pass · no_cargo pass · trail pass\n\n- pages: no page draws ProfileView; no AppDestination\n- feed_draws_light: no mock title on the feed: 9:41 | 00 | Margin | Everything is in place.\n- feed_draws_dark: no mock title on the feed: 9:41 | Margin | Everything is in place.\n\n**Refusals**:\n\n- loom refused: comment body=text: `Comment` has no `text`: its fields are id, postID, parentID, body, author, score, depth, created\n\n**Stopped**: t3 completed\n\n**Build**: iOS: succeeded · macOS: succeeded\n\n**Notes**:\n\n- Turn 3 run again from the state `replay-replay-2026-11-03-2-t1-2-t2-1` left before it; the chain started at 2026-11-03-2.\n- The trail is `regime/runs/replay-replay-replay-2026-11-03-2-t1-2-t2-1-t3-1/Margin`: open it in Craft and type `#lantern`.\n",
+    "images": [
+      [
+        "card.png",
+        "Outcome card for replay-replay-replay-2026-11-03-2-t1-2-t2-1-t3-1"
+      ],
+      [
+        "launch-dark.png",
+        "iPhone, dark: the launch page (no feed destination was found)"
+      ],
+      [
+        "launch-light.png",
+        "iPhone, light: the launch page (no feed destination was found)"
+      ],
+      [
+        "sheet.png",
+        "The contact sheet the screenshots agent wrote"
+      ]
+    ],
+    "variant": "baseline",
+    "expand": "on",
+    "bars": "11/14",
+    "base_case": false,
+    "made": "13/13",
+    "replay": {
+      "run": "replay-replay-2026-11-03-2-t1-2-t2-1",
+      "turn": 3
+    }
   }
 ]
