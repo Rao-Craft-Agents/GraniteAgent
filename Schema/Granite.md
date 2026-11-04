@@ -10,6 +10,7 @@ granite's own log.
 | --- | --- |
 | [`granite.input.schema.json`](granite.input.schema.json) | What it takes, as JSON Schema |
 | [`granite.answer.schema.json`](granite.answer.schema.json) | What it answers: `granite-answer/1` with its own kinds |
+| [`examples/granite.answer.json`](examples/granite.answer.json) | A real answer, from a regime run |
 
 ## What it takes
 

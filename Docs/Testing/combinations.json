@@ -43,5 +43,50 @@
       "run": "2026-11-03-2",
       "turn": 1
     }
+  },
+  {
+    "run": "replay-replay-2026-11-03-2-t1-2-t2-1",
+    "date": "2026-11-04",
+    "model": "Qwen3-Coder-Next-REAP-48B-A3B-mlx-4bit",
+    "window": "64k",
+    "wall": 638,
+    "first": 198.7,
+    "agents": "8 / 5 / 2",
+    "hand": 0,
+    "in_agents": 5,
+    "model_time": 633,
+    "compactions": "none",
+    "peak": "57%",
+    "stop": "t2 completed",
+    "build": "iOS: succeeded · macOS: succeeded",
+    "checks": "10/14 bars · base case not yet · mocks_decodes pass · mocks_counts pass · mocks_stems pass · mocks_threads pass · services pass · loom_screens fail · pages fail · build_macos pass · build_ios pass · tests pass · feed_draws_light fail · feed_draws_dark fail · agents_made pass · refusals_typed pass · hand_per_turn pass · refusals_corrected fail · no_cargo pass · trail pass",
+    "entry": "### replay-replay-2026-11-03-2-t1-2-t2-1\n\n*2026-11-04 · Qwen3-Coder-Next-REAP-48B-A3B-mlx-4bit · baseline · expand on · 64k window · stage P0 · max_rows 4 · Craft 6e950df3619c+dirty (committed as a7bbf02) · Frigate c5b68d76f0b7 · granite 4210ca9 · loom bcf0c85 · mocks 3bea47d · network dbac458 · screenshots 22186ba · replay of turn 2 of replay-2026-11-03-2-t1-2*\n\n**Prompts**, one a turn, verbatim (`regime/prompts/`):\n\n> **t2 services**: Now give Margin its services with $granite, in this order: first a FeedService whose work is loading a page of posts from MarginClient (state: posts [Post] = [], nextCursor String?, loading Bool = false); then a PostService whose work is loading one post and its comments from MarginClient (state: post Post?, comments [Comment] = [], loading Bool = false); then a ProfileService whose work is loading a user and their posts from MarginClient (state: user User?, posts [Post] = [], loading Bool = false). Each piece of work calls MarginClient.current's methods with their declared labels. No pages yet.\n\n**Time**: 638 s in all; 5 s inside agents, 633 s the model and Craft; first agent call at 198.7 s.\n\n| Turn | Wall s | Prompt Σ | Completion Σ | Reused | Agents m/r/c | By hand | Stop |\n|---|---|---|---|---|---|---|---|\n| t2 services | 638 | 691,753 | 3,168 | 88% | granite 8/5/2 | 0 | completed |\n\n**Agents**, across the run (`granite-answer/1`: what each made of what its calls expected):\n\n| Agent | Revision | Calls m/r/c | Made of expected | Not made | Problems | Refusals by kind | Asks (tokens) |\n|---|---|---|---|---|---|---|---|\n| `granite` | 4210ca9 | 8 / 5 / 2 | 3 of 3 (100%) | — | — | call 5 | 0 (0) |\n\n**Who wrote what**:\n\n- `granite`: 22 files: Services/FeedService/FeedService+Center.swift, Services/FeedService/FeedService.swift, Services/FeedService/Ops/FeedOps.swift, Services/FeedService/Reducers/FeedService.Load.swift, Services/FeedService/Reducers/FeedService.More.swift, Services/FeedService/Reducers/FeedService.Set.swift, Services/PostService/Ops/PostOps.swift, Services/PostService/PostService+Center.swift, …\n- by hand: 0 files\n\n**Bars**: 10 of 14 passed · base case not yet\n\n**Checks**: mocks_decodes pass · mocks_counts pass · mocks_stems pass · mocks_threads pass · services pass · loom_screens **fail** · pages **fail** · build_macos pass · build_ios pass · tests pass · feed_draws_light **fail** · feed_draws_dark **fail** · agents_made pass · refusals_typed pass · hand_per_turn pass · refusals_corrected **fail** · no_cargo pass · trail pass\n\n- loom_screens: missing FeedView, PostPageView, CommentThreadView, ProfileView; no conformance names Post, Comment, User, Community\n- pages: no page draws FeedView; no page draws PostPageView or CommentThreadView; no page draws ProfileView; no AppDestination\n- feed_draws_light: no mock title on the feed: 9:41 | 00 | Margin | Everything is in place.\n- feed_draws_dark: no mock title on the feed: 9:41 | Margin | Everything is in place.\n- refusals_corrected: turns [2] left a refusal uncorrected\n\n**Refusals**:\n\n- granite refused: name the service with `type`, like `Feed` (it becomes FeedService)\n- granite refused: `load(page Int) -> posts, nextCursor = MarginClient.current.posts(cursor: nextCursor, limit: 20) \"loads a page of posts\"`: after load's parameters comes `-> field`, `+> field` or `= expression`, not …\n- granite refused: `postsPage PostPage` needs a default (`= …`) or `?`: a service's state starts before any work has run\n- granite refused: `load` uses `nextCursor`, which its work cannot see: it sees its parameters (`page`), the state as `state.nextCursor`; a client is reached by its type (`MarginClient…`)\n- granite refused: `load(id String) -> post, comments = MarginClient.current.post(id: id), MarginClient.current.comments(id: id, cursor: nil, limit: 20) \"loads one post and its comments\"`: after load's parameters comes…\n\n**Stopped**: t2 completed\n\n**Build**: iOS: succeeded · macOS: succeeded\n\n**Notes**:\n\n- Turn 2 run again from the state `replay-2026-11-03-2-t1-2` left before it; the chain started at 2026-11-03-2.\n- The trail is `regime/runs/replay-replay-2026-11-03-2-t1-2-t2-1/Margin`: open it in Craft and type `#lantern`.\n",
+    "images": [
+      [
+        "card.png",
+        "Outcome card for replay-replay-2026-11-03-2-t1-2-t2-1"
+      ],
+      [
+        "launch-dark.png",
+        "iPhone, dark: the launch page (no feed destination was found)"
+      ],
+      [
+        "launch-light.png",
+        "iPhone, light: the launch page (no feed destination was found)"
+      ],
+      [
+        "sheet.png",
+        "The contact sheet the screenshots agent wrote"
+      ]
+    ],
+    "variant": "baseline",
+    "expand": "on",
+    "bars": "10/14",
+    "base_case": false,
+    "made": "3/3",
+    "replay": {
+      "run": "replay-2026-11-03-2-t1-2",
+      "turn": 2
+    }
   }
 ]

@@ -1,0 +1,41 @@
+{
+  "agent": {
+    "word": "granite"
+  },
+  "expected": [
+    {
+      "kind": "service",
+      "name": "ProfileService"
+    }
+  ],
+  "format": "granite-answer/1",
+  "made": [
+    {
+      "kind": "service",
+      "name": "ProfileService",
+      "path": "Services/ProfileService/ProfileService.swift",
+      "state": "written"
+    }
+  ],
+  "make": "service",
+  "notes": [
+    "AppRoot holds a relay to ProfileService, so it is hosted for the life of the app",
+    "ProfileService's work that writes the state runs one call at a time, in order, through its lane"
+  ],
+  "path": "Services/ProfileService/ProfileService.swift",
+  "paths": [
+    "Services/ProfileService/ProfileService.swift",
+    "Services/ProfileService/ProfileService+Center.swift",
+    "Services/ProfileService/Reducers/ProfileService.Set.swift",
+    "Services/ProfileService/Reducers/ProfileService.LoadUser.swift",
+    "Services/ProfileService/Reducers/ProfileService.LoadPosts.swift",
+    "Services/ProfileService/Ops/ProfileOps.swift",
+    "Tests/ProfileOpsTests.swift",
+    "Shared/Utility/AppRoot.swift"
+  ],
+  "types": [
+    "ProfileService",
+    "ProfileService.LoadUser",
+    "ProfileService.LoadPosts"
+  ]
+}
