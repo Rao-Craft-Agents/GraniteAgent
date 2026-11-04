@@ -1,0 +1,154 @@
+{
+  "$id" : "https://github.com/Rao-Craft-Agents/GraniteAgent/blob/main/Schema/granite.input.schema.json",
+  "$schema" : "https://json-schema.org/draft/2020-12/schema",
+  "description" : "Every field a call to granite may give; `directory` is Craft's, never the model's.",
+  "properties" : {
+    "actions" : {
+      "description" : "what a page does: `refresh = try await feed.load(page: 1)`, `more = …`, `open(post Post) = …`, `compose \"New Post\" square.and.pencil = …`",
+      "items" : {
+        "type" : "string"
+      },
+      "type" : "array"
+    },
+    "body" : {
+      "description" : "a blank page's body as Swift, written as given: the view the app has, filled from the page's relays and actions (`FeedView(posts: feed.state.posts, actions: …)`)",
+      "type" : "string"
+    },
+    "bundleId" : {
+      "description" : "the app's bundle identifier; com.example.<name> when left out: project",
+      "type" : "string"
+    },
+    "destinations" : {
+      "description" : "the app's places, one a line: `feed: Feed \"Feed\" house`; `| Detail` names the view beside it in the split style",
+      "items" : {
+        "type" : "string"
+      },
+      "type" : "array"
+    },
+    "events" : {
+      "description" : "a service's work, one a line: `load(page Int) -> posts = API.posts(page: page) \"loads a page\"`; `+> posts` appends; with no `= call` the host's model writes the work",
+      "items" : {
+        "type" : "string"
+      },
+      "type" : "array"
+    },
+    "imports" : {
+      "description" : "modules the files import beside Foundation, SwiftUI and Granite; a local package's are found on their own",
+      "items" : {
+        "type" : "string"
+      },
+      "type" : "array"
+    },
+    "into" : {
+      "description" : "the folder, relative to the project; Services/<Type> or Components/<Type> when left out; a kit's folder (`Packages/RecipeKit`) puts a public service in the kit",
+      "type" : "string"
+    },
+    "layout" : {
+      "description" : "how a page draws: list, grid, detail, form, settings, search, compose, tabs, threePane, blank",
+      "enum" : [
+        "list",
+        "grid",
+        "detail",
+        "form",
+        "settings",
+        "search",
+        "compose",
+        "tabs",
+        "threePane",
+        "blank"
+      ],
+      "type" : "string"
+    },
+    "make" : {
+      "description" : "what to make: project (a new iOS + macOS app), package (a kit of services), link (Granite into an Xcode project this agent did not make), service, component (a page), navigation, modals",
+      "enum" : [
+        "project",
+        "package",
+        "link",
+        "service",
+        "component",
+        "navigation",
+        "modals"
+      ],
+      "type" : "string"
+    },
+    "name" : {
+      "description" : "the app's or the kit's name, letters and digits, like `Recipes`: project and package",
+      "type" : "string"
+    },
+    "notes" : {
+      "description" : "what the work or the page is for, in a sentence: what the host's model writes bodies from",
+      "type" : "string"
+    },
+    "packages" : {
+      "description" : "remote packages the app links, pinned: `https://github.com/kean/Nuke@<40-hex revision> Nuke NukeUI`",
+      "items" : {
+        "type" : "string"
+      },
+      "type" : "array"
+    },
+    "persist" : {
+      "description" : "whether a service's state is kept between launches",
+      "type" : "boolean"
+    },
+    "relays" : {
+      "description" : "the services a service's work calls or a page reads: `feed: FeedService` or `Feed`",
+      "items" : {
+        "type" : "string"
+      },
+      "type" : "array"
+    },
+    "root" : {
+      "description" : "the root page; Home when left out",
+      "type" : "string"
+    },
+    "rounds" : {
+      "description" : "how many answers the host's model may give one body before the call is refused; 3 when left out",
+      "type" : "integer"
+    },
+    "shows" : {
+      "description" : "what a page draws: `items = feed.state.posts`, `item = …`, `selection = feed.state.selected`, `title = \"Feed\"`, `empty = \"No posts yet\"`; a row of a form `\"Section/Label\" = config.state.field`",
+      "items" : {
+        "type" : "string"
+      },
+      "type" : "array"
+    },
+    "state" : {
+      "description" : "fields, one a line, in the models syntax: `posts [Post] = []`, `selected String?`; a page's `let post Post` is an input it is made with",
+      "items" : {
+        "type" : "string"
+      },
+      "type" : "array"
+    },
+    "style" : {
+      "description" : "how the app moves between destinations: adaptive (tabs on iPhone, a sidebar on iPad and Mac), tabs, sidebar, split",
+      "enum" : [
+        "adaptive",
+        "tabs",
+        "sidebar",
+        "split"
+      ],
+      "type" : "string"
+    },
+    "team" : {
+      "description" : "the 10-character Apple team id the app signs with: project",
+      "type" : "string"
+    },
+    "type" : {
+      "description" : "the service (`Feed` makes FeedService) or the page (`Feed`) to make",
+      "type" : "string"
+    },
+    "views" : {
+      "description" : "a page's subviews: `row(post Post, vote (Bool) -> Void) \"title, author and score, with a vote\"`; a description is what the host's model writes the body from",
+      "items" : {
+        "type" : "string"
+      },
+      "type" : "array"
+    }
+  },
+  "required" : [
+    "make"
+  ],
+  "title" : "What granite takes (craft-agent/1)",
+  "type" : "object"
+}
