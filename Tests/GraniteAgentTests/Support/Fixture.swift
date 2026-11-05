@@ -96,8 +96,10 @@ enum Fixture {
     static let detail = GraniteAppAgent.Input(
         make: .component, type: "RecipeDetail", state: ["let recipe Recipe"], relays: ["recipes: RecipesService"], layout: .detail,
         shows: ["item = recipe", "title = recipe.title"],
-        actions: [#"favor(recipe Recipe) "Favorite" star = recipes.set(.favorite(recipe.id))"#],
-        views: [#"header(recipe Recipe) "the photo large, the title and how long it takes""#])
+        actions: [#"favor(recipe Recipe) "Favorite" star = recipes.set(.favorite(recipe.id))"#,
+                  "rate(recipe Recipe, stars Int) = recipes.set(.favorite(recipe.id))",
+                  "share(recipe Recipe) = recipes.set(.favorite(recipe.id))"],
+        views: [#"header(recipe Recipe, rate (Int) -> Void, share () -> Void) "the photo large, the title and how long it takes""#])
 
     static let compose = GraniteAppAgent.Input(
         make: .component, type: "NewRecipe", state: [#"title String = """#, #"notes String = """#, "minutes Int = 30"],
@@ -123,7 +125,7 @@ enum Fixture {
         FakeHostModel(bodies: [
             "return [item",
             "let trimmed = item.trimmingCharacters(in: .whitespaces)\nguard !trimmed.isEmpty else { throw URLError(.badURL) }\nreturn [trimmed]",
-            "VStack(alignment: .leading, spacing: 8) {\n    AsyncImage(url: recipe.photo) { image in\n        image.resizable().scaledToFill()\n    } placeholder: {\n        Color.secondary.opacity(0.15)\n    }\n    .frame(height: 220)\n    .clipShape(RoundedRectangle(cornerRadius: 12))\n    .accessibilityHidden(true)\n    Text(recipe.title)\n        .font(.title.bold())\n    Label(\"\\(recipe.minutes) min\", systemImage: \"clock\")\n        .font(.subheadline)\n        .foregroundStyle(.secondary)\n}",
+            "VStack(alignment: .leading, spacing: 8) {\n    AsyncImage(url: recipe.photo) { image in\n        image.resizable().scaledToFill()\n    } placeholder: {\n        Color.secondary.opacity(0.15)\n    }\n    .frame(height: 220)\n    .clipShape(RoundedRectangle(cornerRadius: 12))\n    .accessibilityHidden(true)\n    Text(recipe.title)\n        .font(.title.bold())\n    Label(\"\\(recipe.minutes) min\", systemImage: \"clock\")\n        .font(.subheadline)\n        .foregroundStyle(.secondary)\n    HStack(spacing: 16) {\n        Button(\"Rate\") { rate(5) }\n        Button(\"Share\") { share() }\n    }\n}",
             "ScrollView {\n    VStack(alignment: .leading, spacing: 12) {\n        Text(\"Today\")\n            .font(.largeTitle.bold())\n        ForEach(recipes.state.recipes.prefix(3)) { recipe in\n            Text(recipe.title)\n                .font(.headline)\n        }\n    }\n    .padding()\n}",
         ])
     }

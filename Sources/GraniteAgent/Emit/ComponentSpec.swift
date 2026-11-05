@@ -154,14 +154,15 @@ struct ComponentSpec {
     func viewType(_ view: ViewSpec) -> String { "\(type)\(view.roleName)View" }
 
     /// The view drawn for `item` (of `itemType`, the items' element when left out): its values from the item and the
-    /// shows lines, its closures from the actions.
+    /// shows lines, and under it the routes of what it sends, each to the action of its name.
     func instance(_ view: ViewSpec, item: String?, itemType: String? = nil) -> String {
         var arguments: [String] = []
+        var routes: [String] = []
         let element = itemType ?? self.element
         for param in view.params {
             if param.isClosure {
-                guard let action = action(param.name), let wiring = wiring(param, to: action, item: item, itemType: element) else { continue }
-                arguments.append("\(SwiftName.member(param.name)): \(wiring)")
+                guard let action = action(param.name), let route = route(view, param, to: action, item: item, itemType: element) else { continue }
+                routes.append(route)
             } else if let element, param.type == element, let item {
 
                 arguments.append("\(SwiftName.member(param.name)): \(item)")
@@ -169,11 +170,14 @@ struct ComponentSpec {
                 arguments.append("\(SwiftName.member(param.name)): \(show.expression)")
             }
         }
-        return "\(viewType(view))(\(arguments.joined(separator: ", ")))"
+        let drawn = "\(viewType(view))(\(arguments.joined(separator: ", ")))"
+        guard !routes.isEmpty else { return drawn }
+        return ([drawn, "    .onBubble {"] + routes.map { "        " + $0 } + ["    }"]).joined(separator: "\n")
     }
 
-    /// The closure a view's `param` is given: it runs `action`, with the item first when the action takes it.
-    func wiring(_ param: ViewSpec.Param, to action: Action, item: String?, itemType: String? = nil) -> String? {
+    /// The route a view's `param` comes up by: it runs `action`, with the item first when the action takes it, and
+    /// what the view sent after. Nil when the action does not take what the closure carries.
+    func route(_ view: ViewSpec, _ param: ViewSpec.Param, to action: Action, item: String?, itemType: String? = nil) -> String? {
         let inputs = Self.closureInputs(param.type)
         var actionParams = action.params
         var leading: [String] = []
@@ -185,8 +189,21 @@ struct ComponentSpec {
         guard actionParams.count == inputs.count else { return nil }
         let names = actionParams.map { SwiftName.member($0.name) }
         let call = "\(SwiftName.member(action.name))(\((leading + names.map { "\($0): \($0)" }).joined(separator: ", ")))"
-        let head = names.isEmpty ? "" : names.joined(separator: ", ") + " in "
-        return "{ \(head)Task { try? await \(call) } }"
+        let constant = ViewBubble.constant(viewType(view), param)
+        guard let payload = ViewBubble.payload(param) else {
+            return "On(.\(constant)) { Task { try? await \(call) } }"
+        }
+        let head = names.count == 1 ? names[0] : "(" + names.joined(separator: ", ") + ")"
+        return "On(.\(constant), \(payload).self) { \(head) in Task { try? await \(call) } }"
+    }
+
+    /// The closures of `view` no action of this page routes: drawn, and doing nothing when used.
+    func unrouted(_ view: ViewSpec) -> [String] {
+        view.closures.filter { closure in
+            guard let action = action(closure.name) else { return true }
+            let inputs = Self.closureInputs(closure.type).count
+            return action.params.count != inputs && action.params.count != inputs + 1
+        }.map(\.name)
     }
 
     /// `(Bool, String) -> Void` → `["Bool", "String"]`.

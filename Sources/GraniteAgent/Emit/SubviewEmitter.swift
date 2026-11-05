@@ -1,8 +1,10 @@
-//  WHAT: A page's subview, alone in `Views/<Page>.<Role>View.swift`: a struct of values and optional closures, its
+//  WHAT: A page's subview, alone in `Views/<Page>.<Role>View.swift`: a struct of values whose actions bubble up, its
 //        body from the host's model when the line describes it, or made from its value's fields when it does not
 //        (a row, a cell, a detail), and a preview when the project has samples of its values.
-//  PIN:  A CLOSURE IS OPTIONAL, AND ITS CONTROL HIDES WHEN THE PAGE GIVES NONE. A view never routes; a page that
-//        cannot do something leaves the closure out, and the button is not drawn.
+//  PIN:  A VIEW SENDS ITS ACTIONS UP AND NEVER ROUTES THEM. Each closure of the line is a `GraniteBubble.Name` of the
+//        view's own, sent by a function of the view (`favor()`, `rate(_ value: Int)`) that holds the exact type a
+//        route matches; the page routes it with `onBubble` where it draws the view. The view stores no closures,
+//        and its controls are always drawn.
 
 import Foundation
 
@@ -14,20 +16,33 @@ struct SubviewEmitter {
     func file(_ view: ViewSpec, body: String) -> String {
         var code = Code()
         var seen: Set<String> = []
-        for module in ["Foundation", "SwiftUI"] + spec.imports where seen.insert(module).inserted { code.line("import \(module)") }
+        let sends = !view.closures.isEmpty
+        for module in ["Foundation", "SwiftUI"] + (sends ? ["Granite"] : []) + spec.imports where seen.insert(module).inserted { code.line("import \(module)") }
         code.line()
         code.line("/// \(doc(view))")
-        code.open("struct \(spec.viewType(view)): View {")
+        let type = spec.viewType(view)
+        code.open("struct \(type): View {")
         for value in view.values { code.line("let \(SwiftName.member(value.name)): \(value.type)") }
-        for closure in view.closures {
-            let type = closure.type.replacingOccurrences(of: "@escaping", with: "").trimmingCharacters(in: .whitespaces)
-            code.line("var \(SwiftName.member(closure.name)): (\(type))? = nil")
-        }
+        if sends { code.line("@Environment(\\.graniteBubble) private var bubble") }
         code.line()
         code.open("var body: some View {")
         code.block(body)
         code.close()
+        if sends {
+            code.line()
+            code.line("// What the view does, sent up to the page that draws it.")
+            for closure in view.closures { code.line(ViewBubble.function(type, closure)) }
+        }
         code.close()
+        if sends {
+            code.line()
+            code.open("extension GraniteBubble.Name {")
+            for closure in view.closures {
+                code.line("/// \(type)'s `\(closure.name)`.")
+                code.line("static let \(ViewBubble.constant(type, closure)): Self = \"\(ViewBubble.rawValue(type, closure))\"")
+            }
+            code.close()
+        }
         if let preview = preview(view) {
             code.line()
             code.block(preview)
@@ -78,7 +93,7 @@ struct SubviewEmitter {
             let name = SwiftName.member(closure.name)
             var words = closure.name
             if words.hasPrefix("on"), words.count > 2, words.dropFirst(2).first?.isUppercase == true { words = String(words.dropFirst(2)) }
-            code.line("if let \(name) { Button(\"\(SwiftName.escaped(SwiftName.title(words)))\") { \(name)() } }")
+            code.line("Button(\"\(SwiftName.escaped(SwiftName.title(words)))\") { \(name)() }")
         }
         code.close()
         code.line(".buttonStyle(.borderless)")

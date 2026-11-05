@@ -6,6 +6,6 @@ import Foundation
 
 enum GranitePin {
     static let url = "https://github.com/riteshpakala/Granite"
-    static let revision = "deb19149d3e45f96f2f34f074d159c1adee17417"
+    static let revision = "7ff335264bb0dde79913525cba4523e905514fc8"
     static let products = ["Granite", "GraniteAgents"]
 }

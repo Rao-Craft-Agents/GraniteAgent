@@ -38,7 +38,7 @@ struct ComponentLayouts {
         code.open("var view: some View {")
         code.open("List {")
         for header in spec.headerViews {
-            code.line(spec.instance(header, item: nil))
+            code.block(spec.instance(header, item: nil))
             code.line("    .listRowSeparator(.hidden)")
         }
         code.open(forEach(items, item))
@@ -59,7 +59,7 @@ struct ComponentLayouts {
         let item = spec.itemName
         code.open("var view: some View {")
         code.open("ScrollView {")
-        for header in spec.headerViews { code.line(spec.instance(header, item: nil)) }
+        for header in spec.headerViews { code.block(spec.instance(header, item: nil)) }
         code.open("LazyVGrid(columns: [GridItem(.adaptive(minimum: 160), spacing: 12)], spacing: 12) {")
         code.open(forEach(items, item))
         row(&code, items: items, item: item, isList: false)
@@ -80,7 +80,7 @@ struct ComponentLayouts {
     /// One item: its view, a tap that opens or selects it, its own actions, and loading more at the last one.
     private func row(_ code: inout Code, items: String, item: String, isList: Bool) {
         if let view = spec.rowView {
-            code.line(spec.instance(view, item: item))
+            code.block(spec.instance(view, item: item))
         } else {
             code.line("Text(String(describing: \(item)))")
         }
@@ -178,11 +178,11 @@ struct ComponentLayouts {
     private func detailBody(_ code: inout Code, name: String, element: String?, views: [ViewSpec]) {
         code.open("ScrollView {")
         code.open("VStack(alignment: .leading, spacing: 16) {")
-        for header in spec.headerViews { code.line(spec.instance(header, item: nil)) }
+        for header in spec.headerViews { code.block(spec.instance(header, item: nil)) }
         if views.isEmpty {
             code.line("Text(String(describing: \(name)))")
         } else {
-            for view in views { code.line(spec.instance(view, item: name, itemType: element)) }
+            for view in views { code.block(spec.instance(view, item: name, itemType: element)) }
         }
         code.close()
         code.line(".padding()")
@@ -309,7 +309,7 @@ struct ComponentLayouts {
             code.open("NavigationSplitView {")
         }
         code.open("List(\(items), selection: \(selectionBinding)) { \(item) in")
-        if let view = spec.rowView { code.line(spec.instance(view, item: item)) } else { code.line("Text(String(describing: \(item)))") }
+        if let view = spec.rowView { code.block(spec.instance(view, item: item)) } else { code.line("Text(String(describing: \(item)))") }
 
         code.line("    .tag(\(item).id)")
         code.close()
@@ -323,7 +323,7 @@ struct ComponentLayouts {
         code.open("if let \(item) = \(items).first(where: { $0.id == \(selection) }) {")
         code.open("ScrollView {")
         code.open("VStack(alignment: .leading, spacing: 16) {")
-        if views.isEmpty { code.line("Text(String(describing: \(item)))") } else { for view in views { code.line(spec.instance(view, item: item)) } }
+        if views.isEmpty { code.line("Text(String(describing: \(item)))") } else { for view in views { code.block(spec.instance(view, item: item)) } }
 
         code.close()
         code.line(".padding()")

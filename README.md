@@ -69,7 +69,7 @@ items = feed.state.posts                  shows: a role (items, item, selection,
 "Appearance/Theme" = config.state.appearance        or a row of a form, its control chosen by the field's type
 refresh = try await feed.load(page: 1)    actions: refresh, more, open, submit and search do what they say
 favor(post Post) "Favorite" star = …       an action on an item is in its row's menu and swipe; others are toolbar buttons
-row(post Post, vote (Bool) -> Void) "title, author and score, with a vote"     views: a closure is filled by the action of its name
+row(post Post, vote (Bool) -> Void) "title, author and score, with a vote"     views: a closure is an action the view bubbles up, routed to the action of its name
 feed: Feed "Feed" house | PostDetail       destinations: the detail after a bar shows beside it in the split style
 ```
 

@@ -213,6 +213,11 @@ struct ComponentMake {
             plan.notes.append("RelayClock keeps \(type)'s bound controls up with their service within a frame")
         }
         plan.types = [type] + spec.views.map { spec.viewType($0) }
+        for view in spec.views {
+            for name in spec.unrouted(view) {
+                plan.notes.append("\(spec.viewType(view)) draws `\(name)`, and no action of \(type) by that name takes what it sends, so it does nothing yet: add `\(name)(…)` to actions")
+            }
+        }
         plan.notes += notes
         if let element = spec.element, index.types[element] == nil {
             plan.notes.append("\(element)'s fields were not found in the project, so its rows show the value as text: add a `row(…)` views line with a description")
@@ -249,7 +254,7 @@ struct ComponentMake {
     }
 
     static func viewPrompt(_ view: ViewSpec, spec: ComponentSpec, description: String, notes: String?) -> String {
-        let properties = view.values.map { "let \($0.name): \($0.type)" } + view.closures.map { "var \($0.name): (\($0.type))? = nil" }
+        let properties = view.values.map { "let \($0.name): \($0.type)" } + view.closures.map { ViewBubble.function(spec.viewType(view), $0, withBody: false) }
         var lines = ["View: struct \(spec.viewType(view)): View { \(properties.joined(separator: "; ")) }"]
         var mentioned = Set(view.values.flatMap { ((try? FieldLine.parseType($0.type, in: $0.type))?.names) ?? [] })
         for name in mentioned { mentioned.formUnion(spec.index.types[name]?.fields.flatMap { ((try? FieldLine.parseType($0.type, in: $0.type))?.names) ?? [] } ?? []) }
@@ -276,6 +281,7 @@ struct ComponentMake {
         "Font", "Edge", "EdgeInsets", "CGSize", "CGFloat", "CGPoint", "Angle", "Animation", "Binding", "LocalizedStringKey",
         "String", "Int", "Double", "Bool", "Date", "URL", "UUID", "Array", "Dictionary", "Set", "Optional", "Task", "Text.DateStyle",
         "Material", "ShapeStyle", "AnyShapeStyle", "RelativeDateTimeFormatter", "DateFormatter", "NumberFormatter", "Calendar",
+        "On",
     ]
 
     /// Names a body uses that neither SwiftUI nor the app has: a view it makes (`Spinner()`), or work it awaits that
@@ -409,7 +415,17 @@ struct ComponentMake {
         }
         if !spec.fields.isEmpty { lines.append("The page's state: " + spec.fields.map { "\($0.name) \($0.type)" }.joined(separator: ", ")) }
         for view in spec.views {
-            lines.append("Subview: \(spec.viewType(view))(\(view.values.map { "\($0.name): \($0.type)" }.joined(separator: ", ")))")
+            let type = spec.viewType(view)
+            var line = "Subview: \(type)(\(view.values.map { "\($0.name): \($0.type)" }.joined(separator: ", ")))"
+            if !view.closures.isEmpty {
+                // PIN: what a subview sends comes up as a bubble, routed where the page draws it, by its name and the
+                // exact type it carries; a page passes it no closures.
+                let sends = view.closures.map { closure in
+                    ViewBubble.payload(closure).map { "`.\(ViewBubble.constant(type, closure))` (\($0))" } ?? "`.\(ViewBubble.constant(type, closure))`"
+                }
+                line += "; it sends " + sends.joined(separator: ", ") + ", routed where it is drawn: `\(type)(…).onBubble { On(.name, Type.self) { value in Task { try? await action(…) } } }`"
+            }
+            lines.append(line)
         }
         if !spec.actions.isEmpty {
             lines.append("The page's own functions, in \(spec.type)+Actions.swift: call them as they are, never declare them again:")

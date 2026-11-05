@@ -139,7 +139,7 @@
       "type" : "string"
     },
     "views" : {
-      "description" : "a page's subviews: `row(post Post, vote (Bool) -> Void) \"title, author and score, with a vote\"`; a description is what the host's model writes the body from",
+      "description" : "a page's subviews: `row(post Post, vote (Bool) -> Void) \"title, author and score, with a vote\"`; a closure is an action the view sends up with `bubble`, routed by the page to the action of its name; a description is what the host's model writes the body from",
       "items" : {
         "type" : "string"
       },

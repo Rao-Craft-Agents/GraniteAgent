@@ -25,7 +25,7 @@ enum BodyPrompts {
     You write the body of one SwiftUI view in an iOS 17 and macOS 14 app. Answer with one JSON object, {"body": "…"}: the Swift that goes inside `var body: some View { … }`, nothing else.
 
     Rules:
-    - Use only the view's properties listed, and the fields of their types. A closure property is optional: show its control only when it is set (`if let onSave { Button("Save") { onSave() } }`).
+    - Use only the view's properties listed, and the fields of their types. What the view does is one of its functions listed (`func save()`, `func rate(_ value: Int)`): call it from its control (`Button("Save") { save() }`), which is always drawn. Never declare them again, and never add closures: the page routes what they send.
     - Every word a person reads is a literal SwiftUI localizes: Text("Reply"), Button("Share"), Label("Saved", systemImage: "bookmark"). A value from the data is shown as it is: Text(recipe.title).
     - An icon-only control gets .accessibilityLabel(Text("…")).
     - System text styles (.headline, .subheadline, .caption) so Dynamic Type works; semantic colours (.primary, .secondary, .tint, Color.secondary.opacity(0.15)) so light and dark both read.
@@ -33,10 +33,10 @@ enum BodyPrompts {
     - No force unwraps, no `fatalError`, no `print`, no placeholder comments, no fixed heights on text.
 
     An example from another app (a recipe app), to copy the shape of and never the names:
-    View: struct RecipeCardView: View { let recipe: Recipe; var onFavorite: ((Bool) -> Void)? = nil }
+    View: struct RecipeCardView: View { let recipe: Recipe; func favorite(_ value: Bool) }
     Recipe: title String, minutes Int, photo URL?, isFavorite Bool
     What it shows: the photo, the title, how long it takes, and a heart to favourite it
-    Answer: {"body": "HStack(alignment: .top, spacing: 12) {\n    AsyncImage(url: recipe.photo) { image in\n        image.resizable().scaledToFill()\n    } placeholder: {\n        Color.secondary.opacity(0.15)\n    }\n    .frame(width: 56, height: 56)\n    .clipShape(RoundedRectangle(cornerRadius: 10))\n    VStack(alignment: .leading, spacing: 4) {\n        Text(recipe.title).font(.headline)\n        Label(\"\\(recipe.minutes) min\", systemImage: \"clock\").font(.caption).foregroundStyle(.secondary)\n    }\n    Spacer(minLength: 0)\n    if let onFavorite {\n        Button { onFavorite(!recipe.isFavorite) } label: {\n            Image(systemName: recipe.isFavorite ? \"heart.fill\" : \"heart\")\n        }\n        .buttonStyle(.borderless)\n        .accessibilityLabel(Text(\"Favorite\"))\n    }\n}\n.padding(.vertical, 4)"}
+    Answer: {"body": "HStack(alignment: .top, spacing: 12) {\n    AsyncImage(url: recipe.photo) { image in\n        image.resizable().scaledToFill()\n    } placeholder: {\n        Color.secondary.opacity(0.15)\n    }\n    .frame(width: 56, height: 56)\n    .clipShape(RoundedRectangle(cornerRadius: 10))\n    VStack(alignment: .leading, spacing: 4) {\n        Text(recipe.title).font(.headline)\n        Label(\"\\(recipe.minutes) min\", systemImage: \"clock\").font(.caption).foregroundStyle(.secondary)\n    }\n    Spacer(minLength: 0)\n    Button { favorite(!recipe.isFavorite) } label: {\n        Image(systemName: recipe.isFavorite ? \"heart.fill\" : \"heart\")\n    }\n    .buttonStyle(.borderless)\n    .accessibilityLabel(Text(\"Favorite\"))\n}\n.padding(.vertical, 4)"}
     """#
 
     static let page = #"""
@@ -44,6 +44,7 @@ enum BodyPrompts {
 
     Rules:
     - Use only the relays, the page's state (`state.x`, bound with `center.$state.binding.x`), the subviews and the actions listed.
+    - A subview takes values only. What it sends comes up as a bubble: route each one where the subview is drawn, by the name and type listed, to the action it means: `RecipeCardView(recipe: recipe).onBubble { On(.recipeCardFavorite, Bool.self) { value in Task { try? await favor(recipe: recipe, on: value) } } }`.
     - Every word a person reads is a literal SwiftUI localizes: Text("Today"), Button("Add"). Values from the data are shown as they are.
     - An icon-only control gets .accessibilityLabel(Text("…")). System text styles and semantic colours, so Dynamic Type, light and dark all work.
     - No force unwraps, no `fatalError`, no `print`, no placeholder comments, nothing only one platform has outside #if os(…).

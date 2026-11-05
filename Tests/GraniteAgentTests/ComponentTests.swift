@@ -90,14 +90,17 @@ final class ComponentTests: XCTestCase {
         let model = FakeHostModel(bodies: ["VStack(alignment: .leading) {\n    Text(recipe.title).font(.title)\n}"])
         let result = try await Fixture.call(Fixture.detail, in: folder, model: model)
         XCTAssertEqual(model.asked.count, 1)
-        XCTAssertTrue(model.asked[0].user.contains("View: struct RecipeDetailHeaderView: View { let recipe: Recipe }"))
+        XCTAssertTrue(model.asked[0].user.contains("View: struct RecipeDetailHeaderView: View { let recipe: Recipe; func rate(_ value: Int); func share() }"),
+                      "what the view does is told as its functions, never closures")
         XCTAssertTrue(model.asked[0].user.contains("Recipe: id String, title String, summary String?, minutes Int, photo URL?, added Date"), "the value's fields")
         XCTAssertTrue(model.asked[0].user.contains("What it shows: the photo large, the title and how long it takes"))
         XCTAssertTrue(result.types.contains("RecipeDetailHeaderView"))
         let component = try read(folder, "Components/RecipeDetail/RecipeDetail.swift")
         XCTAssertTrue(component.contains("let recipe: Recipe\n\n    init(recipe: Recipe) {\n        self.recipe = recipe\n    }"))
         let view = try read(folder, "Components/RecipeDetail/RecipeDetail+View.swift")
-        XCTAssertTrue(view.contains("RecipeDetailHeaderView(recipe: recipe)"))
+        XCTAssertTrue(view.contains("RecipeDetailHeaderView(recipe: recipe)\n"))
+        XCTAssertTrue(view.contains("On(.recipeDetailHeaderRate, Int.self) { stars in Task { try? await rate(recipe: recipe, stars: stars) } }"))
+        XCTAssertTrue(view.contains("On(.recipeDetailHeaderShare) { Task { try? await share(recipe: recipe) } }"))
         XCTAssertFalse(view.contains("let recipe = recipe"))
         XCTAssertTrue(view.contains(".navigationTitle(recipe.title)"))
         XCTAssertTrue(view.contains("ToolbarItemGroup(placement: .secondaryAction) {"))
@@ -316,14 +319,35 @@ final class ComponentTests: XCTestCase {
         XCTAssertFalse(FileManager.default.fileExists(atPath: folder.appendingPathComponent("Components/Feed").path))
     }
 
-    func testAClosureOfAViewIsFilledByTheActionOfItsName() throws {
+    func testAViewsActionsBubbleUpToTheActionOfTheirName() throws {
         let spec = ComponentSpec(type: "Feed", layout: .list, relays: [], fields: [], shows: [],
-                                 actions: [try ActionLine.parse("vote(post Post, up Bool) = try await feed.vote(post: post, up: up)")],
-                                 views: [try ViewLine.parse("row(post Post, vote (Bool) -> Void, share () -> Void)")], index: ProjectIndex())
+                                 actions: [try ActionLine.parse("vote(post Post, up Bool) = try await feed.vote(post: post, up: up)"),
+                                           try ActionLine.parse("tag(post Post, label String, weight Int) = try await feed.vote(post: post, up: true)")],
+                                 views: [try ViewLine.parse("row(post Post, vote (Bool) -> Void, share () -> Void, tag (String, Int) -> Void)")], index: ProjectIndex())
         let row = spec.views[0]
-        XCTAssertEqual(spec.instance(row, item: "post", itemType: "Post"),
-                       "FeedRowView(post: post, vote: { up in Task { try? await vote(post: post, up: up) } })",
-                       "a closure no action fills is left out, and its control hides")
+        XCTAssertEqual(spec.instance(row, item: "post", itemType: "Post"), """
+            FeedRowView(post: post)
+                .onBubble {
+                    On(.feedRowVote, Bool.self) { up in Task { try? await vote(post: post, up: up) } }
+                    On(.feedRowTag, (String, Int).self) { (label, weight) in Task { try? await tag(post: post, label: label, weight: weight) } }
+                }
+            """, "the page passes no closures: it routes what the view sends, the item first")
+        XCTAssertEqual(spec.unrouted(row), ["share"], "a closure no action routes is drawn and said")
+        XCTAssertEqual(ComponentSpec(type: "Feed", layout: .list, relays: [], fields: [], shows: [], actions: [],
+                                     views: [try ViewLine.parse("row(post Post)")], index: ProjectIndex()).instance(row, item: "post", itemType: "Post"),
+                       "FeedRowView(post: post)", "a view with nothing routed is drawn as it is")
+
+        let file = SubviewEmitter(spec: spec).file(row, body: SubviewEmitter(spec: spec).body(row))
+        for expected in ["import Granite", "@Environment(\\.graniteBubble) private var bubble",
+                         "private func vote(_ value: Bool) { bubble(.feedRowVote, value) }",
+                         "private func share() { bubble(.feedRowShare) }",
+                         "private func tag(_ value1: String, _ value2: Int) { bubble(.feedRowTag, (value1, value2)) }",
+                         "extension GraniteBubble.Name {", "static let feedRowVote: Self = \"FeedRowView.vote\"",
+                         "static let feedRowShare: Self = \"FeedRowView.share\"", "Button(\"Share\") { share() }"] {
+            XCTAssertTrue(file.contains(expected), "the view's file has `\(expected)`")
+        }
+        XCTAssertFalse(file.contains("? = nil"), "a view stores no closures")
+        XCTAssertFalse(file.contains("if let share"), "its controls are always drawn")
         XCTAssertEqual(ComponentEmitter.writingOwnState("state.query = \"\"; feed.state.x == 1"), "_state.query.wrappedValue = \"\"; feed.state.x == 1")
     }
 
